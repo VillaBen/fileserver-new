@@ -244,6 +244,43 @@ async function initDatabase() {
   await db.asyncRun('CREATE INDEX IF NOT EXISTS idx_email_codes_email ON email_codes(email)');
   await db.asyncRun('CREATE INDEX IF NOT EXISTS idx_reset_account ON password_resets(account_id)');
 
+  // 为现有文件表添加安全状态相关列（如果不存在）
+  try {
+    await db.asyncRun('ALTER TABLE files ADD COLUMN security_status TEXT DEFAULT "unknown"');
+  } catch (e) {
+    // 列可能已存在，忽略错误
+  }
+
+  try {
+    await db.asyncRun('ALTER TABLE files ADD COLUMN scan_mode TEXT');
+  } catch (e) {
+    // 列可能已存在，忽略错误
+  }
+
+  try {
+    await db.asyncRun('ALTER TABLE files ADD COLUMN scan_result TEXT');
+  } catch (e) {
+    // 列可能已存在，忽略错误
+  }
+
+  try {
+    await db.asyncRun('ALTER TABLE files ADD COLUMN scan_at DATETIME');
+  } catch (e) {
+    // 列可能已存在，忽略错误
+  }
+
+  try {
+    await db.asyncRun('ALTER TABLE files ADD COLUMN deleted_at DATETIME');
+  } catch (e) {
+    // 列可能已存在，忽略错误
+  }
+
+  try {
+    await db.asyncRun('ALTER TABLE files ADD COLUMN type TEXT');
+  } catch (e) {
+    // 列可能已存在，忽略错误
+  }
+
   console.log('✅ 数据库初始化完成');
 }
 

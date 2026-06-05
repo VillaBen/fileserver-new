@@ -19,6 +19,16 @@
       <el-icon :size="40" v-else>
         <Folder class="folder-icon" />
       </el-icon>
+      <div v-if="!isFolder" class="security-status" :class="securityStatusClass">
+        <el-tooltip :content="securityStatusText" placement="top">
+          <el-icon :size="16">
+            <CircleCheck v-if="file.securityStatus === 'safe'" />
+            <Warning v-else-if="file.securityStatus === 'warning'" />
+            <CircleClose v-else-if="file.securityStatus === 'dangerous'" />
+            <QuestionFilled v-else />
+          </el-icon>
+        </el-tooltip>
+      </div>
     </div>
     <div class="file-card-content">
       <div class="file-card-name" :title="file.name">
@@ -40,7 +50,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import { Document, Picture, VideoCamera, Headset, Files, Folder } from '@element-plus/icons-vue';
+import { Document, Picture, VideoCamera, Headset, Files, Folder, CircleCheck, Warning, CircleClose, QuestionFilled } from '@element-plus/icons-vue';
 import { useI18nStore } from '@/stores/i18n';
 import { formatFileSize, formatDate } from '@/utils/format';
 
@@ -60,6 +70,22 @@ const emit = defineEmits(['click', 'contextmenu', 'dblclick']);
 const i18n = useI18nStore();
 
 const isFolder = computed(() => props.file.type === 'folder');
+
+const securityStatusClass = computed(() => {
+  const status = props.file.securityStatus;
+  if (status === 'safe') return 'status-safe';
+  if (status === 'warning') return 'status-warning';
+  if (status === 'dangerous') return 'status-danger';
+  return 'status-unknown';
+});
+
+const securityStatusText = computed(() => {
+  const status = props.file.securityStatus;
+  if (status === 'safe') return '安全';
+  if (status === 'warning') return '警告';
+  if (status === 'dangerous') return '危险';
+  return '未知';
+});
 
 const handleClick = (event) => {
   if (event.detail === 2) {
@@ -110,6 +136,33 @@ const handleClick = (event) => {
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--el-color-info);
+  position: relative;
+}
+
+.security-status {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: white;
+  border-radius: 50%;
+  padding: 2px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.status-safe {
+  color: var(--el-color-success);
+}
+
+.status-warning {
+  color: var(--el-color-warning);
+}
+
+.status-danger {
+  color: var(--el-color-danger);
+}
+
+.status-unknown {
   color: var(--el-color-info);
 }
 

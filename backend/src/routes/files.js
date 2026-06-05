@@ -130,6 +130,10 @@ router.get('/', async (req, res) => {
         inTrash: file.in_trash,
         isEncrypted: file.is_encrypted,
         fileHash: file.file_hash,
+        securityStatus: file.security_status,
+        scanMode: file.scan_mode,
+        scanResult: file.scan_result,
+        scanAt: file.scan_at,
         createdAt: file.created_at,
         updated_at: file.updated_at,
         updatedAt: file.updated_at,
@@ -276,7 +280,8 @@ router.post('/upload', upload.array('files', 10), validateFile, malwareScan, asy
     const uploadedFiles = [];
     const conflicts = [];
 
-    for (const file of req.files) {
+    for (let i = 0; i < req.files.length; i++) {
+      const file = req.files[i];
       // 确保原始文件名正确处理 UTF-8 编码
       let originalName = file.originalname;
       
@@ -324,9 +329,20 @@ router.post('/upload', upload.array('files', 10), validateFile, malwareScan, asy
       // 删除原始文件
       fs.unlinkSync(file.path);
 
+      // 获取安全扫描结果
+      const scanResult = req.fileScanResults ? req.fileScanResults[i] : null;
+      const securityStatus = scanResult ? scanResult.securityStatus : 'unknown';
+      const scanMode = scanResult ? scanResult.scanMode : null;
+      const scanResultDetails = scanResult ? JSON.stringify({
+        warnings: scanResult.warnings,
+        details: scanResult.details,
+        error: scanResult.error
+      }) : null;
+      const scanAt = new Date();
+
       const result = await db.asyncRun(
-        'INSERT INTO files (account_id, original_name, filename, filepath, size, mime_type, folder_id, is_encrypted, file_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [user.id, originalName, file.filename + '.enc', encryptedPath, file.size, file.mimetype, folderId || null, 1, fileHash]
+        'INSERT INTO files (account_id, original_name, filename, filepath, size, mime_type, folder_id, is_encrypted, file_hash, security_status, scan_mode, scan_result, scan_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [user.id, originalName, file.filename + '.enc', encryptedPath, file.size, file.mimetype, folderId || null, 1, fileHash, securityStatus, scanMode, scanResultDetails, scanAt]
       );
 
       uploadedFiles.push({
@@ -336,7 +352,8 @@ router.post('/upload', upload.array('files', 10), validateFile, malwareScan, asy
         size: file.size,
         mimeType: file.mimetype,
         isEncrypted: true,
-        fileHash: fileHash
+        fileHash: fileHash,
+        securityStatus: securityStatus
       });
     }
 
