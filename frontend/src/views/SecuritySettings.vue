@@ -8,6 +8,117 @@
     </div>
 
     <div class="settings-container">
+      <!-- SMTP 邮件配置 -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-icon" style="background: linear-gradient(135deg, var(--el-color-info) 0%, var(--el-color-info-light-3) 100%);">
+            <el-icon :size="24"><Message /></el-icon>
+          </div>
+          <div>
+            <h2 class="settings-card-title">{{ i18n.t('smtpConfig') || 'SMTP 邮件配置' }}</h2>
+            <p class="settings-card-desc">{{ i18n.t('smtpConfigDesc') || '配置邮件服务器以发送验证码和通知' }}</p>
+          </div>
+        </div>
+
+        <div class="settings-card-body">
+          <el-form :model="smtpForm" label-position="top">
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item :label="i18n.t('smtpHost') || 'SMTP 主机'">
+                  <el-input
+                    v-model="smtpForm.host"
+                    :placeholder="i18n.t('smtpHostPlaceholder') || '例如: smtp.example.com'"
+                    size="large"
+                    :disabled="loading"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item :label="i18n.t('smtpPort') || 'SMTP 端口'">
+                  <el-input
+                    v-model="smtpForm.port"
+                    :placeholder="i18n.t('smtpPortPlaceholder') || '例如: 587 或 465'"
+                    size="large"
+                    :disabled="loading"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item :label="i18n.t('smtpUser') || '邮箱账号'">
+                  <el-input
+                    v-model="smtpForm.user"
+                    :placeholder="i18n.t('smtpUserPlaceholder') || '例如: noreply@example.com'"
+                    size="large"
+                    :disabled="loading"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item :label="i18n.t('smtpPass') || '授权码/密码'">
+                  <el-input
+                    v-model="smtpForm.pass"
+                    type="password"
+                    show-password
+                    :placeholder="i18n.t('smtpPassPlaceholder') || '邮箱授权码或登录密码'"
+                    size="large"
+                    :disabled="loading"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item :label="i18n.t('smtpFrom') || '发件人名称'">
+                  <el-input
+                    v-model="smtpForm.from"
+                    :placeholder="i18n.t('smtpFromPlaceholder') || '例如: FileCloud'"
+                    size="large"
+                    :disabled="loading"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item :label="i18n.t('smtpSecure') || '使用 SSL/TLS'">
+                  <el-select v-model="smtpForm.secure" size="large" :disabled="loading">
+                    <el-option label="否 (STARTTLS)" value="false" />
+                    <el-option label="是 (SSL/TLS)" value="true" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <div class="form-tip">
+              <el-icon><InfoFilled /></el-icon>
+              <span>{{ i18n.t('smtpTip') || '邮箱账号和授权码将使用 AES-256 加密存储' }}</span>
+            </div>
+
+            <div class="form-actions">
+              <el-button type="primary" @click="saveSmtp" :loading="savingSmtp">
+                {{ i18n.t('save') || '保存' }}
+              </el-button>
+              <el-button @click="testSmtp" :loading="testingSmtp" :disabled="!smtpForm.host || !smtpForm.user || !smtpForm.pass">
+                {{ i18n.t('testConnection') || '测试连接' }}
+              </el-button>
+              <el-button @click="showSendTestEmail = true" :disabled="!smtpForm.host || !smtpForm.user || !smtpForm.pass">
+                {{ i18n.t('sendTestEmail') || '发送测试邮件' }}
+              </el-button>
+            </div>
+
+            <el-alert
+              v-if="smtpTestResult"
+              :title="smtpTestResult.message"
+              :type="smtpTestResult.type"
+              :closable="false"
+              class="mt-4"
+            />
+          </el-form>
+        </div>
+      </div>
+
       <!-- VirusTotal API 配置 -->
       <div class="settings-card">
         <div class="settings-card-header">
@@ -148,13 +259,34 @@
         </div>
       </div>
     </div>
+
+    <!-- 发送测试邮件对话框 -->
+    <el-dialog
+      v-model="showSendTestEmail"
+      :title="i18n.t('sendTestEmail') || '发送测试邮件'"
+      width="500px"
+    >
+      <el-form :model="testEmailForm" label-position="top">
+        <el-form-item :label="i18n.t('recipientEmail') || '收件人邮箱'">
+          <el-input
+            v-model="testEmailForm.to"
+            :placeholder="i18n.t('recipientEmailPlaceholder') || '请输入收件人邮箱'"
+            size="large"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showSendTestEmail = false">{{ i18n.t('cancel') || '取消' }}</el-button>
+        <el-button type="primary" @click="sendTestEmail" :loading="sendingTestEmail">{{ i18n.t('send') || '发送' }}</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Key, Shield, InfoFilled, CircleCheck, Warning, CircleClose, QuestionFilled } from '@element-plus/icons-vue';
+import { Key, Shield, InfoFilled, CircleCheck, Warning, CircleClose, QuestionFilled, Message } from '@element-plus/icons-vue';
 import { useI18nStore } from '@/stores/i18n';
 import settingsApi from '@/api/client';
 
@@ -168,11 +300,29 @@ const scanModeForm = ref({
   mode: 'hybrid'
 });
 
+const smtpForm = ref({
+  host: '',
+  port: '587',
+  user: '',
+  pass: '',
+  from: '',
+  secure: 'false'
+});
+
+const testEmailForm = ref({
+  to: ''
+});
+
 const loading = ref(false);
 const saving = ref(false);
 const testing = ref(false);
 const savingScanMode = ref(false);
+const savingSmtp = ref(false);
+const testingSmtp = ref(false);
+const sendingTestEmail = ref(false);
 const testResult = ref(null);
+const smtpTestResult = ref(null);
+const showSendTestEmail = ref(false);
 
 onMounted(async () => {
   await loadSettings();
@@ -186,6 +336,27 @@ async function loadSettings() {
     if (response.success && response.data) {
       if (response.data.virustotal_api_key) {
         apiKeyForm.value.apiKey = response.data.virustotal_api_key;
+      }
+      if (response.data.smtp_host) {
+        smtpForm.value.host = response.data.smtp_host;
+      }
+      if (response.data.smtp_port) {
+        smtpForm.value.port = response.data.smtp_port;
+      }
+      if (response.data.smtp_user) {
+        smtpForm.value.user = response.data.smtp_user;
+      }
+      if (response.data.smtp_pass) {
+        smtpForm.value.pass = response.data.smtp_pass;
+      }
+      if (response.data.smtp_from) {
+        smtpForm.value.from = response.data.smtp_from;
+      }
+      if (response.data.smtp_secure !== undefined) {
+        smtpForm.value.secure = response.data.smtp_secure;
+      }
+      if (response.data.malware_scan_mode) {
+        scanModeForm.value.mode = response.data.malware_scan_mode;
       }
     }
   } catch (error) {
@@ -242,6 +413,75 @@ async function saveScanMode() {
     ElMessage.error(i18n.t('saveFailed') || '保存失败');
   } finally {
     savingScanMode.value = false;
+  }
+}
+
+async function saveSmtp() {
+  try {
+    savingSmtp.value = true;
+    await settingsApi.updateSettings({
+      smtp_host: smtpForm.value.host,
+      smtp_port: smtpForm.value.port,
+      smtp_user: smtpForm.value.user,
+      smtp_pass: smtpForm.value.pass,
+      smtp_from: smtpForm.value.from,
+      smtp_secure: smtpForm.value.secure
+    });
+    ElMessage.success(i18n.t('saveSuccess') || '保存成功');
+    smtpTestResult.value = null;
+  } catch (error) {
+    console.error('保存 SMTP 配置失败:', error);
+    ElMessage.error(i18n.t('saveFailed') || '保存失败');
+  } finally {
+    savingSmtp.value = false;
+  }
+}
+
+async function testSmtp() {
+  try {
+    testingSmtp.value = true;
+    smtpTestResult.value = null;
+
+    await settingsApi.testSmtp({
+      host: smtpForm.value.host,
+      port: parseInt(smtpForm.value.port) || 587,
+      secure: smtpForm.value.secure === 'true',
+      user: smtpForm.value.user,
+      pass: smtpForm.value.pass
+    });
+
+    smtpTestResult.value = {
+      type: 'success',
+      message: i18n.t('connectionSuccess') || 'SMTP 连接验证成功'
+    };
+  } catch (error) {
+    console.error('测试 SMTP 失败:', error);
+    smtpTestResult.value = {
+      type: 'error',
+      message: error.response?.data?.message || i18n.t('connectionFailed') || '连接失败，请检查配置'
+    };
+  } finally {
+    testingSmtp.value = false;
+  }
+}
+
+async function sendTestEmail() {
+  if (!testEmailForm.value.to) {
+    ElMessage.warning(i18n.t('pleaseEnterEmail') || '请输入收件人邮箱');
+    return;
+  }
+
+  try {
+    sendingTestEmail.value = true;
+    await settingsApi.sendTestEmail(testEmailForm.value.to);
+    ElMessage.success(i18n.t('testEmailSent') || '测试邮件已发送，请查收');
+    showSendTestEmail.value = false;
+    testEmailForm.value.to = '';
+  } catch (error) {
+    console.error('发送测试邮件失败:', error);
+    ElMessage.error(error.response?.data?.message || i18n.t('sendFailed') || '发送失败');
+  } finally {
+    sendingTestEmail.value = false;
   }
 }
 </script>

@@ -26,4 +26,8 @@ router.get('/files', adminController.getAllFiles);
 router.get('/settings', systemSettingsController.getSettings);
 router.put('/settings', systemSettingsController.updateSettings);
 
+// 邮件配置测试
+router.post('/settings/test-smtp', systemSettingsController.testSmtp);
+router.post('/settings/send-test-email', systemSettingsController.sendTestEmail);
+
 module.exports = router;

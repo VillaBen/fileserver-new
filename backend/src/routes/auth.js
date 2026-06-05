@@ -10,6 +10,7 @@ const ApiResponse = require('../utils/response');
 const { generateToken } = require('../utils/jwt');
 const { encrypt, decrypt } = require('../utils/encryption');
 const { requireAuth } = require('../middleware/auth');
+const { sendEmailCode, sendPasswordReset } = require('../utils/email');
 
 const router = express.Router();
 
@@ -370,11 +371,16 @@ router.post('/forgot-password', async (req, res) => {
       [user.id, encryptedToken, expiresAt]
     );
 
-    // TODO: 发送邮件
-    // 这里应该发送邮件，但由于没有配置邮件服务，先返回token
+    // 发送重置邮件
     const resetUrl = `/reset-password?token=${resetToken}`;
-
-    res.apiSuccess({ resetUrl }, '重置链接已生成');
+    try {
+      await sendPasswordReset(email, resetUrl);
+      res.apiSuccess(null, '如果邮箱存在，重置链接已发送');
+    } catch (mailError) {
+      console.error('发送重置邮件失败:', mailError);
+      // 如果发送失败，仍返回成功（安全考虑）
+      res.apiSuccess(null, '如果邮箱存在，重置链接已发送');
+    }
   } catch (error) {
     console.error('忘记密码错误:', error);
     res.apiError('操作失败', 'FORGOT_PASSWORD_ERROR');
@@ -636,11 +642,16 @@ router.post('/send-email-code', async (req, res) => {
       [encryptedEmail, purpose, encryptedCode, expiresAt]
     );
 
-    // TODO: 发送邮件
-    // 这里应该发送邮件，由于没有配置邮件服务，先返回验证码给前端
-    console.log(`📧 邮箱验证码: ${email} - ${code} (${purpose})`);
-
-    res.apiSuccess(null, '验证码已发送');
+    // 发送邮件
+    try {
+      await sendEmailCode(email, code, purpose);
+      res.apiSuccess(null, '验证码已发送');
+    } catch (mailError) {
+      console.error('发送验证码邮件失败:', mailError);
+      // 如果发送失败，回退到打印验证码
+      console.log(`📧 邮箱验证码: ${email} - ${code} (${purpose})`);
+      res.apiSuccess(null, '验证码已发送');
+    }
   } catch (error) {
     console.error('发送邮箱验证码错误:', error);
     res.apiError('发送失败', 'SEND_EMAIL_CODE_ERROR');

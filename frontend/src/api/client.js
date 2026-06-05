@@ -23,5 +23,17 @@ export default {
   async getVirusTotalApiKey() {
     const response = await this.getSettings();
     return response.data?.virustotal_api_key || '';
+  },
+
+  // 测试 SMTP 连接
+  async testSmtp(config) {
+    const response = await api.post('/admin/settings/test-smtp', config);
+    return response.data;
+  },
+
+  // 发送测试邮件
+  async sendTestEmail(to) {
+    const response = await api.post('/admin/settings/send-test-email', { to });
+    return response.data;
   }
 };
