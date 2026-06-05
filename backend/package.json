@@ -1,0 +1,54 @@
+{
+  "name": "fileserver-backend",
+  "version": "1.0.0",
+  "description": "Modern File Server Backend with Layered Architecture",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "db:init": "node scripts/init-db.js",
+    "test": "echo \"Tests not implemented yet\"",
+    "lint": "echo \"Linting not configured yet\""
+  },
+  "keywords": [
+    "file-server",
+    "express",
+    "nodejs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "bcryptjs": "^3.0.3",
+    "captchapng": "^0.0.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "csurf": "^1.2.2",
+    "dotenv": "^17.4.2",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.4.1",
+    "express-session": "^1.19.0",
+    "file-type": "^22.0.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "jszip": "^3.10.1",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^8.0.7",
+    "qrcode": "^1.5.4",
+    "speakeasy": "^2.0.0",
+    "sqlite3": "^6.0.1",
+    "svg-captcha": "^1.4.0",
+    "uuid": "^14.0.0",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "axios": "^1.16.1",
+    "axios-cookiejar-support": "^7.0.0",
+    "form-data": "^4.0.5",
+    "nodemon": "^3.0.0",
+    "tough-cookie": "^6.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

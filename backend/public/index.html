@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FileCloud - API 服务</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+      max-width: 800px;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 48px;
+      text-align: center;
+      color: white;
+    }
+
+    .logo {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .title {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 48px;
+    }
+
+    .section {
+      margin-bottom: 32px;
+    }
+
+    .section:last-child {
+      margin-bottom: 0;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title::before {
+      content: '';
+      width: 4px;
+      height: 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 2px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .info-card {
+      background: #f7fafc;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: #718096;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .info-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a202c;
+    }
+
+    .endpoint-list {
+      list-style: none;
+    }
+
+    .endpoint-item {
+      background: #f7fafc;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border-left: 4px solid #667eea;
+    }
+
+    .endpoint-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .endpoint-method {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 12px;
+    }
+
+    .endpoint-path {
+      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+      font-size: 14px;
+      color: #2d3748;
+    }
+
+    .endpoint-desc {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #718096;
+    }
+
+    .footer {
+      background: #f7fafc;
+      padding: 24px;
+      text-align: center;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .footer-text {
+      font-size: 14px;
+      color: #718096;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #48bb78;
+      color: white;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    @media (max-width: 640px) {
+      .header {
+        padding: 32px 24px;
+      }
+
+      .title {
+        font-size: 24px;
+      }
+
+      .content {
+        padding: 24px;
+      }
+
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">📁</div>
+      <h1 class="title">FileCloud</h1>
+      <p class="subtitle">文件管理 API 服务</p>
+    </div>
+
+    <div class="content">
+      <div class="section">
+        <h2 class="section-title">服务状态</h2>
+        <div class="info-grid">
+          <div class="info-card">
+            <div class="info-label">运行状态</div>
+            <div class="info-value">
+              <span class="status-badge">
+                <span class="status-dot"></span>
+                运行中
+              </span>
+            </div>
+          </div>
+          <div class="info-card">
+            <div class="info-label">API 版本</div>
+            <div class="info-value">v1.0</div>
+          </div>
+          <div class="info-card">
+            <div class="info-label">数据格式</div>
+            <div class="info-value">JSON</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">认证接口</h2>
+        <ul class="endpoint-list">
+          <li class="endpoint-item">
+            <span class="endpoint-method">POST</span>
+            <span class="endpoint-path">/api/auth/login</span>
+            <p class="endpoint-desc">用户登录</p>
+          </li>
+          <li class="endpoint-item">
+            <span class="endpoint-method">POST</span>
+            <span class="endpoint-path">/api/auth/register</span>
+            <p class="endpoint-desc">用户注册</p>
+          </li>
+          <li class="endpoint-item">
+            <span class="endpoint-method">POST</span>
+            <span class="endpoint-path">/api/auth/logout</span>
+            <p class="endpoint-desc">用户登出</p>
+          </li>
+          <li class="endpoint-item">
+            <span class="endpoint-method">GET</span>
+            <span class="endpoint-path">/api/auth/me</span>
+            <p class="endpoint-desc">获取当前用户信息</p>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">文件接口</h2>
+        <ul class="endpoint-list">
+          <li class="endpoint-item">
+            <span class="endpoint-method">GET</span>
+            <span class="endpoint-path">/api/files</span>
+            <p class="endpoint-desc">获取文件列表</p>
+          </li>
+          <li class="endpoint-item">
+            <span class="endpoint-method">POST</span>
+            <span class="endpoint-path">/api/files/upload</span>
+            <p class="endpoint-desc">上传文件</p>
+          </li>
+          <li class="endpoint-item">
+            <span class="endpoint-method">DELETE</span>
+            <span class="endpoint-path">/api/files/:id</span>
+            <p class="endpoint-desc">删除文件</p>
+          </li>
+          <li class="endpoint-item">
+            <span class="endpoint-method">GET</span>
+            <span class="endpoint-path">/api/files/:id/download</span>
+            <p class="endpoint-desc">下载文件</p>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">其他接口</h2>
+        <ul class="endpoint-list">
+          <li class="endpoint-item">
+            <span class="endpoint-method">GET</span>
+            <span class="endpoint-path">/api/health</span>
+            <p class="endpoint-desc">健康检查</p>
+          </li>
+          <li class="endpoint-item">
+            <span class="endpoint-method">GET</span>
+            <span class="endpoint-path">/api/captcha/generate</span>
+            <p class="endpoint-desc">生成验证码</p>
+          </li>
+          <li class="endpoint-item">
+            <span class="endpoint-method">GET</span>
+            <span class="endpoint-path">/api/shares</span>
+            <p class="endpoint-desc">分享管理</p>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p class="footer-text">Powered by Express.js + SQLite</p>
+    </div>
+  </div>
+</body>
+</html>
