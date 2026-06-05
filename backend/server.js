@@ -14,6 +14,7 @@ const apiResponseHandler = require('./src/middleware/response');
 const errorHandler = require('./src/middleware/error');
 const { requireAuth, requireAdmin } = require('./src/middleware/auth');
 const { setupRoutes } = require('./src/routes');
+const { initClamAV } = require('./src/middleware/malwareScanner');
 
 // 创建Express应用
 const app = express();
@@ -66,10 +67,18 @@ async function startServer() {
       console.log('✅ 上传目录已创建');
     }
 
+    // 初始化 ClamAV（如果配置了）
+    const scanMode = process.env.MALWARE_SCAN_MODE;
+    if (scanMode === 'clamav' || scanMode === 'hybrid') {
+      console.log('🔍 正在初始化 ClamAV...');
+      await initClamAV();
+    }
+
     // 监听端口
     app.listen(PORT, () => {
       console.log(`🎉 FileCloud 服务器已启动: http://localhost:${PORT}`);
       console.log(`📁 API地址: http://localhost:${PORT}/api`);
+      console.log(`🛡️  恶意文件检测模式: ${scanMode || 'file-header'}`);
     });
   } catch (error) {
     console.error('❌ 服务器启动失败:', error);
