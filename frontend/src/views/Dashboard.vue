@@ -116,6 +116,16 @@
             <div class="stat-label">{{ i18n.t('sharedFiles') }}</div>
           </div>
         </div>
+        <!-- Admin Portal Entry -->
+        <div v-if="isAdmin" class="stat-card admin-card" @click="goToAdmin">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #f56c6c 0%, #e04040 100%);">
+            <el-icon :size="40"><Setting /></el-icon>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">{{ i18n.t('adminPortal') || 'Admin' }}</div>
+            <div class="stat-label">{{ i18n.t('adminPortalDesc') || 'Management Center' }}</div>
+          </div>
+        </div>
       </div>
       
       <!-- File Section -->
@@ -420,10 +430,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
-import { Upload, FolderAdd, Search, Grid, List, Folder, TrendCharts, Download, Share, UploadFilled, Document, Edit, Delete, ArrowUp, ArrowDown, Sort, CopyDocument } from '@element-plus/icons-vue';
+import { useRoute, useRouter } from 'vue-router';
+import { Upload, FolderAdd, Search, Grid, List, Folder, TrendCharts, Download, Share, UploadFilled, Document, Edit, Delete, ArrowUp, ArrowDown, Sort, CopyDocument, Setting } from '@element-plus/icons-vue';
 import { useI18nStore } from '@/stores/i18n';
 import { useFilesStore } from '@/stores/files';
+import { useAuthStore } from '@/stores/auth';
 import { filesAPI } from '@/api';
 import { toast } from '@/utils/toast';
 import { formatFileSize, formatDate } from '@/utils/format';
@@ -437,7 +448,9 @@ import FileConflictDialog from '@/components/FileConflictDialog.vue';
 
 const i18n = useI18nStore();
 const filesStore = useFilesStore();
+const authStore = useAuthStore();
 const route = useRoute();
+const router = useRouter();
 
 const viewMode = ref('grid');
 const searchQuery = ref('');
@@ -476,6 +489,7 @@ const conflictDialog = ref(null);
 
 const selectedFiles = computed(() => filesStore.selectedItems);
 const loading = computed(() => filesStore.isLoading);
+const isAdmin = computed(() => authStore.isAdmin);
 
 const allFiles = computed(() => {
   const folders = filesStore.folders.map(folder => ({
@@ -903,6 +917,10 @@ const handleBreadcrumbNavigate = (item) => {
   filesStore.goToFolder(item.id);
 };
 
+const goToAdmin = () => {
+  router.push('/admin');
+};
+
 const handleShare = (file) => {
   fileToShare.value = file;
   shareForm.value = {
@@ -1043,6 +1061,16 @@ const copyShareLink = () => {
   font-size: 16px;
   color: var(--el-text-color-secondary);
   font-weight: 500;
+}
+
+.admin-card {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.admin-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--el-box-shadow);
 }
 
 .file-section {

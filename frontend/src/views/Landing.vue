@@ -52,8 +52,8 @@
     <div class="landing-footer">
       <p class="footer-text">Powered by Vue 3 + Express + SQLite</p>
       <div class="footer-links">
-        <a href="http://localhost:3000/api/health" class="footer-link" target="_blank">API 状态</a>
-        <a href="http://localhost:3000/api" class="footer-link" target="_blank">API 文档</a>
+        <a href="/api/health" class="footer-link" target="_blank">API 状态</a>
+        <a href="/api" class="footer-link" target="_blank">API 文档</a>
       </div>
     </div>
   </div>

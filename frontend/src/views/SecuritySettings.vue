@@ -172,7 +172,7 @@
       <div class="settings-card">
         <div class="settings-card-header">
           <div class="settings-icon" style="background: linear-gradient(135deg, var(--el-color-success) 0%, var(--el-color-success-light-3) 100%);">
-            <el-icon :size="24"><Shield /></el-icon>
+            <el-icon :size="24"><Lock /></el-icon>
           </div>
           <div>
             <h2 class="settings-card-title">{{ i18n.t('scanMode') || '扫描模式' }}</h2>
@@ -286,7 +286,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Key, Shield, InfoFilled, CircleCheck, Warning, CircleClose, QuestionFilled, Message } from '@element-plus/icons-vue';
+import { Key, Lock, InfoFilled, CircleCheck, Warning, CircleClose, QuestionFilled, Message } from '@element-plus/icons-vue';
 import { useI18nStore } from '@/stores/i18n';
 import settingsApi from '@/api/client';
 

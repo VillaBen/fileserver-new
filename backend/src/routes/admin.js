@@ -22,9 +22,12 @@ router.get('/audit-logs', adminController.getAuditLogs);
 // 文件管理
 router.get('/files', adminController.getAllFiles);
 
-// 系统设置
+// 系统设置（需要管理员权限）
 router.get('/settings', systemSettingsController.getSettings);
 router.put('/settings', systemSettingsController.updateSettings);
+
+// 公开的安全设置接口（供普通用户使用）
+router.get('/security-settings', systemSettingsController.getSettings);
 
 // 邮件配置测试
 router.post('/settings/test-smtp', systemSettingsController.testSmtp);

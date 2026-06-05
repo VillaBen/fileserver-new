@@ -158,12 +158,13 @@ const navItems = computed(() => {
   ];
 
   if (user.value?.role === 'admin') {
-    items.push({
-      path: '/admin',
-      label: 'Admin Panel',
-      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>'
-    });
-  }
+        items.push({
+          path: '/admin',
+          label: i18n.t('adminPanel') || 'Admin',
+          icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
+          isAdmin: true
+        });
+      }
 
   return items;
 });
