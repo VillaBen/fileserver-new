@@ -6,6 +6,7 @@ import ForgotPassword from '../views/ForgotPassword.vue';
 import ResetPassword from '../views/ResetPassword.vue';
 import Dashboard from '../views/Dashboard.vue';
 import Settings from '../views/Settings.vue';
+import SecuritySettings from '../views/SecuritySettings.vue';
 import Shares from '../views/Shares.vue';
 import Trash from '../views/Trash.vue';
 import AppLayout from '../components/AppLayout.vue';
@@ -59,6 +60,11 @@ const routes = [
         path: 'settings',
         name: 'Settings',
         component: Settings,
+      },
+      {
+        path: 'security-settings',
+        name: 'SecuritySettings',
+        component: SecuritySettings,
       },
       {
         path: 'shares',
