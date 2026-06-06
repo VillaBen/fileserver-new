@@ -453,7 +453,7 @@ async function saveScanMode() {
 async function loadCurrentScanMode() {
   try {
     const response = await settingsApi.getSettings();
-    return response.data?.malware_scan_mode || 'hybrid';
+    return response?.data?.malware_scan_mode || 'hybrid';
   } catch (error) {
     return 'hybrid';
   }
