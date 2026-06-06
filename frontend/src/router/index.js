@@ -65,6 +65,7 @@ const routes = [
         path: 'security-settings',
         name: 'SecuritySettings',
         component: SecuritySettings,
+        meta: { requiresAdmin: true },
       },
       {
         path: 'shares',
