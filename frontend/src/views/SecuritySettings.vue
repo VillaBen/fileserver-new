@@ -282,6 +282,14 @@
         <el-button type="primary" @click="sendTestEmail" :loading="sendingTestEmail">{{ i18n.t('send') || '发送' }}</el-button>
       </template>
     </el-dialog>
+
+    <!-- 高危操作确认对话框 -->
+    <HighRiskConfirmDialog
+      v-model="showHighRiskDialog"
+      :steps="disableScanSteps"
+      @confirm="handleDisableConfirm"
+      @cancel="handleDisableCancel"
+    />
   </div>
 </template>
 
@@ -291,6 +299,7 @@ import { ElMessage } from 'element-plus';
 import { Key, Lock, InfoFilled, CircleCheck, Warning, CircleClose, QuestionFilled, Message } from '@element-plus/icons-vue';
 import { useI18nStore } from '@/stores/i18n';
 import settingsApi from '@/api/client';
+import HighRiskConfirmDialog from '@/components/HighRiskConfirmDialog.vue';
 
 const i18n = useI18nStore();
 
@@ -325,6 +334,28 @@ const sendingTestEmail = ref(false);
 const testResult = ref(null);
 const smtpTestResult = ref(null);
 const showSendTestEmail = ref(false);
+
+// 高危操作确认相关
+const showHighRiskDialog = ref(false);
+const pendingScanMode = ref('');
+const originalScanMode = ref('');
+const disableScanSteps = [
+  {
+    title: '确认禁用',
+    message: '您确定要禁用恶意文件检测吗？',
+    confirmText: '继续'
+  },
+  {
+    title: '风险警告',
+    message: '禁用后，系统将不会对上传的文件进行任何安全检测，可能导致恶意文件进入系统！',
+    confirmText: '我理解风险'
+  },
+  {
+    title: '最终确认',
+    message: '您确定要关闭恶意文件检测吗？此操作将降低系统安全性！',
+    confirmText: '确认关闭'
+  }
+];
 
 onMounted(async () => {
   await loadSettings();
@@ -405,16 +436,55 @@ async function testApiKey() {
 }
 
 async function saveScanMode() {
+  const newMode = scanModeForm.value.mode;
+
+  // 如果是要禁用，需要确认
+  if (newMode === 'disabled') {
+    originalScanMode.value = (await loadCurrentScanMode()) || 'hybrid';
+    pendingScanMode.value = 'disabled';
+    showHighRiskDialog.value = true;
+    return;
+  }
+
+  // 其他模式直接保存
+  await performSaveScanMode(newMode);
+}
+
+async function loadCurrentScanMode() {
+  try {
+    const response = await settingsApi.getSettings();
+    return response.data?.malware_scan_mode || 'hybrid';
+  } catch (error) {
+    return 'hybrid';
+  }
+}
+
+async function performSaveScanMode(mode) {
   try {
     savingScanMode.value = true;
-    await settingsApi.updateSettings({ malware_scan_mode: scanModeForm.value.mode });
+    await settingsApi.updateSettings({ malware_scan_mode: mode });
+    scanModeForm.value.mode = mode;
     ElMessage.success(i18n.t('saveSuccess') || '保存成功');
   } catch (error) {
     console.error('保存扫描模式失败:', error);
     ElMessage.error(i18n.t('saveFailed') || '保存失败');
+    if (originalScanMode.value) {
+      scanModeForm.value.mode = originalScanMode.value;
+    }
   } finally {
     savingScanMode.value = false;
   }
+}
+
+async function handleDisableConfirm() {
+  await performSaveScanMode('disabled');
+  showHighRiskDialog.value = false;
+}
+
+function handleDisableCancel() {
+  // 恢复为原来的模式
+  scanModeForm.value.mode = originalScanMode.value;
+  showHighRiskDialog.value = false;
 }
 
 async function saveSmtp() {
