@@ -73,6 +73,9 @@ export const userAPI = {
 export const filesAPI = {
   getFiles: (params) => apiClient.get('/files', { params }),
   getFile: (id) => apiClient.get(`/files/${id}`),
+  previewScan: (formData) => apiClient.post('/files/preview-scan', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
   upload: (formData) => apiClient.post('/files/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),

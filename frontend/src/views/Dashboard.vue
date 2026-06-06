@@ -751,7 +751,8 @@ const handleUpload = async () => {
 };
 
 // 处理文件选择变化
-const handleFileChange = (file, fileList) => {
+const handleFileChange = async (file, fileList) => {
+  // 初始设置所有文件为扫描中状态
   uploadFiles.value = fileList.map((f, idx) => ({
     ...f,
     scanning: true,
@@ -759,46 +760,62 @@ const handleFileChange = (file, fileList) => {
     securityStatusText: i18n.t('scanning') || 'Scanning...'
   }));
   
-  // 为每个文件启动模拟扫描
-  uploadFiles.value.forEach((f, idx) => {
-    simulateScan(idx);
-  });
-};
-
-// 模拟安全扫描过程
-const simulateScan = (index) => {
-  // 模拟扫描需要一定时间（1.5-3秒随机）
-  const scanTime = 1500 + Math.random() * 1500;
-  
-  setTimeout(() => {
-    if (!uploadFiles.value[index]) return;
-    
-    // 随机生成扫描结果
-    const randomResult = Math.random();
-    let status, statusText;
-    
-    if (randomResult < 0.7) {
-      // 70% 安全
-      status = 'safe';
-      statusText = i18n.t('scanResultSafe') || 'Safe';
-    } else if (randomResult < 0.9) {
-      // 20% 警告
-      status = 'warning';
-      statusText = i18n.t('scanResultWarning') || 'Warning';
-    } else {
-      // 10% 危险
-      status = 'dangerous';
-      statusText = i18n.t('scanResultDangerous') || 'Dangerous';
+  // 创建 FormData 发送到后端
+  const formData = new FormData();
+  fileList.forEach((file) => {
+    if (file.raw) {
+      formData.append('files', file.raw);
     }
+  });
+  
+  try {
+    // 调用后端预览扫描 API
+    const response = await filesAPI.previewScan(formData);
     
-    // 更新文件状态
-    uploadFiles.value[index] = {
-      ...uploadFiles.value[index],
-      scanning: false,
-      securityStatus: status,
-      securityStatusText: statusText
-    };
-  }, scanTime);
+    if (response.success && response.data) {
+      // 更新每个文件的扫描结果
+      response.data.forEach((scanResult, idx) => {
+        if (!uploadFiles.value[idx]) return;
+        
+        // 确定状态文本
+        let statusText;
+        switch (scanResult.securityStatus) {
+          case 'safe':
+            statusText = i18n.t('scanResultSafe') || 'Safe';
+            break;
+          case 'warning':
+            statusText = i18n.t('scanResultWarning') || 'Warning';
+            break;
+          case 'dangerous':
+            statusText = i18n.t('scanResultDangerous') || 'Dangerous';
+            break;
+          default:
+            statusText = i18n.t('unknown') || 'Unknown';
+        }
+        
+        // 更新文件状态
+        uploadFiles.value[idx] = {
+          ...uploadFiles.value[idx],
+          scanning: false,
+          securityStatus: scanResult.securityStatus,
+          securityStatusText: statusText,
+          scanResult: scanResult
+        };
+      });
+    }
+  } catch (error) {
+    console.error('扫描失败:', error);
+    // 如果扫描失败，将所有文件状态设为警告
+    uploadFiles.value.forEach((file, idx) => {
+      uploadFiles.value[idx] = {
+        ...file,
+        scanning: false,
+        securityStatus: 'warning',
+        securityStatusText: i18n.t('scanFailed') || 'Scan Failed'
+      };
+    });
+    toast.error(i18n.t('scanFailed') || '扫描失败');
+  }
 };
 
 // 移除上传文件

@@ -10,7 +10,7 @@ const crypto = require('crypto');
 const { db } = require('../config/database');
 const { encryptFile, decryptFileToStream, getFileHash } = require('../utils/encryption');
 const { validateFile, maxFileSize } = require('../middleware/fileValidator');
-const { malwareScan } = require('../middleware/malwareScanner');
+const { malwareScan, scanPreview } = require('../middleware/malwareScanner');
 
 const router = express.Router();
 
@@ -73,6 +73,38 @@ async function checkAndFixOrphanedFiles(userId) {
   }
   return false;
 }
+
+// 预览扫描（不保存文件，仅返回扫描结果）
+router.post('/preview-scan', upload.array('files', 10), async (req, res) => {
+  try {
+    const files = req.files || [];
+    if (files.length === 0) {
+      return res.apiError('请选择要扫描的文件', 'VALIDATION_ERROR');
+    }
+
+    const results = [];
+    for (const file of files) {
+      // 读取文件内容到缓冲区
+      const buffer = fs.readFileSync(file.path);
+      // 清理临时文件
+      fs.unlinkSync(file.path);
+      
+      const scanResult = await scanPreview({
+        originalname: file.originalname,
+        buffer: buffer,
+        mimetype: file.mimetype,
+        size: file.size
+      });
+      
+      results.push(scanResult);
+    }
+
+    res.apiSuccess(results, '扫描完成');
+  } catch (error) {
+    console.error('预览扫描错误:', error);
+    res.apiError('扫描失败', 'SCAN_ERROR');
+  }
+});
 
 // 获取文件列表
 router.get('/', async (req, res) => {
