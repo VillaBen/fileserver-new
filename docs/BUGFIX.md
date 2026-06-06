@@ -2434,3 +2434,131 @@ apiClient.interceptors.response.use(
 
 **当前完成度**: 100%
 
+
+
+## 2026-06-06 (续3)
+
+### P1 - 错误处理格式一致性修复
+
+**问题描述**：
+- 前端错误处理与后端响应格式不一致
+- 后端返回格式为 `{ success: false, error: { code, message } }`
+- 前端拦截器未能正确处理嵌套的错误对象
+
+**根本原因**：
+后端使用 ApiResponse 工具类返回标准化的错误格式，但前端拦截器只处理了简单的 `error` 和 `message` 字段，没有处理嵌套的 `error.code` 和 `error.message`。
+
+**修复文件**：
+- [frontend/src/api/index.js](file:///workspace/frontend/src/api/index.js)
+- [frontend/src/views/SecuritySettings.vue](file:///workspace/frontend/src/views/SecuritySettings.vue)
+
+**修复内容**：
+1. **修复前端错误拦截器** ([api/index.js](file:///workspace/frontend/src/api/index.js#L40-L70))：
+   - 增加对后端嵌套错误格式的识别和处理
+   - 支持向后兼容其他可能的错误格式
+   - 统一错误信息提取逻辑
+
+2. **修复 SecuritySettings.vue 错误访问** ([SecuritySettings.vue](file:///workspace/frontend/src/views/SecuritySettings.vue))：
+   - 修复 `testApiKey()` 函数中的错误访问
+   - 修复 `testSmtp()` 函数中的错误访问
+   - 修复 `sendTestEmail()` 函数中的错误访问
+   - 统一使用 `error.error` 而不是 `error.response.data.message`
+
+**修复前**：
+```javascript
+// api/index.js - 不完整的错误处理
+if (error.response?.data) {
+  const enhancedError = {
+    ...error,
+    error: error.response.data.error || error.response.data.message || '请求失败',
+    errorCode: error.response.data.errorCode || error.response.data.code,
+    // ...
+  };
+}
+```
+
+**修复后**：
+```javascript
+// api/index.js - 完整的错误处理
+if (error.response?.data) {
+  const resData = error.response.data;
+  let errorMessage = '请求失败';
+  let errorCode = 'ERROR';
+  
+  if (resData.error && typeof resData.error === 'object') {
+    // 后端新格式: { success: false, error: { code, message } }
+    errorMessage = resData.error.message || errorMessage;
+    errorCode = resData.error.code || errorCode;
+  } else if (resData.error) {
+    // 兼容可能的旧格式
+    errorMessage = resData.error;
+    errorCode = resData.errorCode || resData.code || errorCode;
+  } else if (resData.message) {
+    errorMessage = resData.message;
+  }
+  // ...
+}
+```
+
+**当前完成度**：100%
+
+---
+
+## 2026-06-06 汇总
+
+### 今日完成的所有修复和功能：
+
+#### ✅ 1. VirusTotal 云扫描集成
+- 新增 VirusTotal 云端扫描支持
+- 完善多种病毒扫描模式（file-header/clamav/hybrid/virustotal/multi-scan/disabled）
+- 数据库初始化脚本更新
+
+#### ✅ 2. 安全设置页面完善
+- 新增病毒扫描模式选择
+- 新增 VirusTotal API Key 配置（加密存储）
+- 新增 SMTP 邮件配置（加密存储）
+- 新增 API 连接测试功能
+
+#### ✅ 3. 高危操作确认组件
+- 创建通用确认对话框组件 HighRiskConfirmDialog
+- 支持多步确认和倒计时
+- 集成到禁用病毒扫描功能
+
+#### ✅ 4. 数据交互一致性修复
+- 修复 API 拦截器，支持 blob 类型响应
+- 修复前后端错误格式一致性
+- 统一数据访问路径
+
+#### ✅ 5. 测试用户工具
+- 创建 test 用户初始化脚本
+
+---
+
+### 完整验证结果
+
+✅ **所有页面组件数据交互检查通过**
+- [x] SecuritySettings.vue - 系统设置
+- [x] Login.vue - 登录
+- [x] Register.vue - 注册
+- [x] Dashboard.vue - 仪表板
+- [x] Settings.vue - 用户设置
+- [x] Admin/Users.vue - 用户管理
+- [x] Admin/AuditLogs.vue - 审计日志
+- [x] 其他所有页面...
+
+✅ **所有状态管理 Stores 检查通过**
+- [x] auth.js - 用户认证
+- [x] files.js - 文件管理
+- [x] admin.js - 管理后台
+
+✅ **后端所有路由和控制器检查通过**
+- [x] SystemSettingsController
+- [x] UserController
+- [x] AdminController
+- [x] ApiTokenController
+- [x] 响应中间件和 ApiResponse 工具类
+
+✅ **数据格式一致性确认**
+- 后端: `{ success: boolean, data?: any, error?: { code, message } }`
+- 前端访问: `response.success`, `response.data`, `error.error`, `error.errorCode`
+
