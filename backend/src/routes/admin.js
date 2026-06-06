@@ -26,7 +26,7 @@ router.get('/files', adminController.getAllFiles);
 router.get('/settings', systemSettingsController.getSettings);
 router.put('/settings', systemSettingsController.updateSettings);
 
-// 公开的安全设置接口（供普通用户使用）
+// 安全设置
 router.get('/security-settings', systemSettingsController.getSettings);
 
 // 邮件配置测试
