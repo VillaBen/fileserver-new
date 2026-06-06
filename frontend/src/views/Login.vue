@@ -254,9 +254,28 @@ async function handleLogin() {
       router.push('/dashboard');
     }
   } catch (error) {
-    errorMessage.value = typeof error.error === 'string' 
-      ? error.error 
-      : i18n.t('loginFailed');
+    console.log('Login error:', error);
+    
+    // Try to get a detailed error message
+    let msg = '';
+    
+    if (error?.errorCode) {
+      // Try to get the i18n translation for the error code
+      const i18nKey = `errors.${error.errorCode}`;
+      const translated = i18n.t(i18nKey);
+      if (translated !== i18nKey) {
+        msg = translated;
+      }
+    }
+    
+    // Fallback options
+    if (!msg && error?.error) {
+      msg = error.error;
+    } else if (!msg) {
+      msg = i18n.t('loginFailed');
+    }
+    
+    errorMessage.value = msg;
     captchaRef.value?.refreshCaptcha();
   } finally {
     isLoading.value = false;

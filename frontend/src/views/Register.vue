@@ -297,9 +297,28 @@ async function handleRegister() {
     ElMessage.success(i18n.t('registrationSuccess'));
     router.push('/login');
   } catch (error) {
-    errorMessage.value = typeof error.error === 'string' 
-      ? error.error 
-      : i18n.t('registrationFailed');
+    console.log('Register error:', error);
+    
+    // Try to get a detailed error message
+    let msg = '';
+    
+    if (error?.errorCode) {
+      // Try to get the i18n translation for the error code
+      const i18nKey = `errors.${error.errorCode}`;
+      const translated = i18n.t(i18nKey);
+      if (translated !== i18nKey) {
+        msg = translated;
+      }
+    }
+    
+    // Fallback options
+    if (!msg && error?.error) {
+      msg = error.error;
+    } else if (!msg) {
+      msg = i18n.t('registrationFailed');
+    }
+    
+    errorMessage.value = msg;
     captchaRef.value?.refreshCaptcha();
   } finally {
     isLoading.value = false;

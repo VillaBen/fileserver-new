@@ -34,6 +34,18 @@ apiClient.interceptors.response.use(
       authStore.logout();
       window.location.href = '/login';
     }
+    // 改造错误对象，让它包含后端返回的详细信息
+    if (error.response?.data) {
+      // 构造一个统一格式的错误对象
+      const enhancedError = {
+        ...error,
+        error: error.response.data.error || error.response.data.message || '请求失败',
+        errorCode: error.response.data.errorCode || error.response.data.code,
+        success: false,
+        data: null,
+      };
+      return Promise.reject(enhancedError);
+    }
     return Promise.reject(error);
   }
 );
