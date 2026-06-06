@@ -67,7 +67,7 @@
           
           <el-table-column :label="i18n.t('storage')" width="180">
             <template #default="{ row }">
-              {{ row.usedStorage || '0 B' }} / {{ row.quota || 'Unlimited' }}
+              {{ row.usedStorage || '0 B' }} / {{ row.quota ? row.quota + ' GB' : i18n.t('unlimited') }}
             </template>
           </el-table-column>
           
@@ -120,15 +120,15 @@
         
         <el-form-item :label="i18n.t('role')">
           <el-select v-model="editForm.role">
-            <el-option label="Admin" value="admin" />
-            <el-option label="Member" value="member" />
+            <el-option :label="i18n.t('admin')" value="admin" />
+            <el-option :label="i18n.t('member')" value="member" />
           </el-select>
         </el-form-item>
         
         <el-form-item :label="i18n.t('status')">
           <el-select v-model="editForm.status">
-            <el-option label="Active" value="active" />
-            <el-option label="Inactive" value="inactive" />
+            <el-option :label="i18n.t('active')" value="active" />
+            <el-option :label="i18n.t('inactive')" value="inactive" />
           </el-select>
         </el-form-item>
         
@@ -139,7 +139,7 @@
             :max="1000"
             style="width: 100%"
           />
-          <span style="margin-left: 8px;">GB</span>
+          <span style="margin-left: 8px;">{{ i18n.t('gbUnit') }}</span>
         </el-form-item>
       </el-form>
       

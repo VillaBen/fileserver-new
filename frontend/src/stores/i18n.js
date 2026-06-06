@@ -175,6 +175,7 @@ const translations = {
     storageAvailable: 'Storage Available',
     used: 'used',
     available: 'available',
+    gbUnit: 'GB',
     totalFiles: 'Total Files',
     folders: 'Folders',
     usedSpace: 'Used Space',
@@ -465,7 +466,8 @@ const translations = {
       write: 'Write',
       delete: 'Delete',
       share: 'Share',
-      admin: 'Admin'
+      admin: 'Admin',
+      member: 'Member'
     },
     userManagement: 'User Management',
     createUser: 'Create User',
@@ -760,6 +762,7 @@ const translations = {
     storageAvailable: '可用存储',
     used: '已使用',
     available: '可用',
+    gbUnit: 'GB',
     totalFiles: '文件总数',
     folders: '文件夹',
     usedSpace: '已用空间',
@@ -1051,7 +1054,8 @@ const translations = {
       write: '写入',
       delete: '删除',
       share: '分享',
-      admin: '管理员'
+      admin: '管理员',
+      member: '成员'
     },
     userManagement: '用户管理',
     createUser: '创建用户',
@@ -1222,6 +1226,11 @@ export const useI18nStore = defineStore('i18n', () => {
   const t = (key, params = {}) => {
     // 通过访问 updateKey 来强制建立响应式依赖
     const _ = updateKey.value;
+    
+    // 如果 key 不是字符串，直接返回 key
+    if (typeof key !== 'string') {
+      return key;
+    }
     
     const locale = currentLocale.value;
     const keys = key.split('.');
