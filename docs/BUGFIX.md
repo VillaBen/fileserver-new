@@ -64,6 +64,70 @@ if (user.value?.role === 'admin') {
 
 ---
 
+### P0 - 服务器重启后登录状态丢失修复
+
+**问题描述**：
+服务器重启后，用户的登录状态丢失，需要重新登录。服务器重启不应该清除已登录用户的状态。
+
+**问题分析**：
+1. `auth.js` 的 `init()` 函数中每次都执行 `localStorage.removeItem(STORAGE_KEY)`，导致登录状态被清除
+2. `fetchUser()` 函数中在 API 调用失败时执行 `user.value = null` 和 `saveToStorage()`，将 null 状态保存到 localStorage
+3. 这两个操作导致服务器重启后用户被迫登出
+
+**修复文件**：
+- [auth.js](file:///workspace/frontend/src/stores/auth.js)
+
+**修复内容**：
+1. 移除 `init()` 函数中的 `localStorage.removeItem(STORAGE_KEY)` 调用
+2. 移除 `fetchUser()` 函数中的 `localStorage.removeItem(STORAGE_KEY)` 调用
+3. 修改 `fetchUser()` 的错误处理：API 失败时不清除用户状态，保留 localStorage 中的数据
+
+**代码变更**：
+```javascript
+// init() 函数修改
+async function init() {
+  // 先从 localStorage 加载用户信息
+  loadFromStorage();
+  
+  // 获取 CSRF token
+  try {
+    const tokenResponse = await commonAPI.getCsrfToken();
+    if (tokenResponse.success) {
+      csrfToken.value = tokenResponse.data.csrfToken;
+      localStorage.setItem('csrfToken', csrfToken.value);
+    }
+  } catch (error) {
+    console.error('Failed to get CSRF token:', error);
+  }
+}
+
+// fetchUser() 函数错误处理修改
+async function fetchUser() {
+  try {
+    // ... API 调用 ...
+    if (response.success) {
+      user.value = response.data;
+      saveToStorage();
+      return response.data;
+    }
+  } catch (error) {
+    console.error('[Avatar-fetchUser] 获取用户信息失败:', error);
+    // API 失败时不清除用户状态，保留 localStorage 中的数据
+    // 这样可以确保服务器重启后用户状态不会丢失
+  }
+  return null;
+}
+```
+
+**技术原理**：
+- JWT token 存储在 cookie 中，不受服务器重启影响
+- 用户信息存储在 localStorage 中（修复后不会被错误清除）
+- API 401 响应时由拦截器正确处理登出逻辑
+
+**当前完成度**：100%
+
+---
+
 ## 2026-04
 
 ### P1 - 回收站恢复时冲突对话框功能完善
