@@ -752,12 +752,53 @@ const handleUpload = async () => {
 
 // 处理文件选择变化
 const handleFileChange = (file, fileList) => {
-  uploadFiles.value = fileList.map(f => ({
+  uploadFiles.value = fileList.map((f, idx) => ({
     ...f,
     scanning: true,
     securityStatus: 'pending',
-    securityStatusText: 'Scanning...'
+    securityStatusText: i18n.t('scanning') || 'Scanning...'
   }));
+  
+  // 为每个文件启动模拟扫描
+  uploadFiles.value.forEach((f, idx) => {
+    simulateScan(idx);
+  });
+};
+
+// 模拟安全扫描过程
+const simulateScan = (index) => {
+  // 模拟扫描需要一定时间（1.5-3秒随机）
+  const scanTime = 1500 + Math.random() * 1500;
+  
+  setTimeout(() => {
+    if (!uploadFiles.value[index]) return;
+    
+    // 随机生成扫描结果
+    const randomResult = Math.random();
+    let status, statusText;
+    
+    if (randomResult < 0.7) {
+      // 70% 安全
+      status = 'safe';
+      statusText = i18n.t('scanResultSafe') || 'Safe';
+    } else if (randomResult < 0.9) {
+      // 20% 警告
+      status = 'warning';
+      statusText = i18n.t('scanResultWarning') || 'Warning';
+    } else {
+      // 10% 危险
+      status = 'dangerous';
+      statusText = i18n.t('scanResultDangerous') || 'Dangerous';
+    }
+    
+    // 更新文件状态
+    uploadFiles.value[index] = {
+      ...uploadFiles.value[index],
+      scanning: false,
+      securityStatus: status,
+      securityStatusText: statusText
+    };
+  }, scanTime);
 };
 
 // 移除上传文件
