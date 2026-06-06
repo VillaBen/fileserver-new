@@ -128,6 +128,52 @@ async function fetchUser() {
 
 ---
 
+### P1 - i18n 翻译函数错误与硬编码问题修复
+
+**问题描述**：
+1. Vue 渲染错误 `TypeError: key.split is not a function`，发生在 `i18n.t()` 函数接收到非字符串输入时
+2. 管理用户页面存在硬编码英文文本（如 "Admin"、"Member"、"GB"、"Unlimited" 等），不符合国际化规范
+
+**问题分析**：
+1. `i18n.t()` 函数没有检查输入类型，直接调用 `key.split()`，当 key 为 undefined/null 或非字符串时会报错
+2. Users.vue 中多处使用硬编码文本，没有使用 i18n 翻译
+3. 缺少部分翻译键（如 `member`、`unlimited`、`gbUnit`）
+
+**修复文件**：
+- [i18n.js](file:///workspace/frontend/src/stores/i18n.js)
+- [Users.vue](file:///workspace/frontend/src/views/Admin/Users.vue)
+
+**修复内容**：
+1. `i18n.t()` 函数添加类型检查，非字符串直接返回原输入，防止报错
+2. Users.vue 中移除硬编码文本，统一使用翻译键：
+   - `Admin` → `i18n.t('admin')`
+   - `Member` → `i18n.t('member')`
+   - `Active` → `i18n.t('active')`
+   - `Inactive` → `i18n.t('inactive')`
+   - `Unlimited` → `i18n.t('unlimited')`
+   - `GB` → `i18n.t('gbUnit')`
+3. 在 i18n.js 中添加缺失的翻译键中英文对照
+
+**代码变更**：
+```javascript
+// i18n.js t() 函数添加类型保护
+const t = (key, params = {}) => {
+  // 通过访问 updateKey 来强制建立响应式依赖
+  const _ = updateKey.value;
+  
+  // 如果 key 不是字符串，直接返回 key
+  if (typeof key !== 'string') {
+    return key;
+  }
+  
+  // ... 原有逻辑
+};
+```
+
+**当前完成度**：100%
+
+---
+
 ## 2026-04
 
 ### P1 - 回收站恢复时冲突对话框功能完善
