@@ -40,11 +40,26 @@ apiClient.interceptors.response.use(
     }
     // 改造错误对象，让它包含后端返回的详细信息
     if (error.response?.data) {
-      // 构造一个统一格式的错误对象
+      const resData = error.response.data;
+      let errorMessage = '请求失败';
+      let errorCode = 'ERROR';
+
+      if (resData.error && typeof resData.error === 'object') {
+        // 后端新格式: { success: false, error: { code, message } }
+        errorMessage = resData.error.message || errorMessage;
+        errorCode = resData.error.code || errorCode;
+      } else if (resData.error) {
+        // 兼容可能的旧格式
+        errorMessage = resData.error;
+        errorCode = resData.errorCode || resData.code || errorCode;
+      } else if (resData.message) {
+        errorMessage = resData.message;
+      }
+
       const enhancedError = {
         ...error,
-        error: error.response.data.error || error.response.data.message || '请求失败',
-        errorCode: error.response.data.errorCode || error.response.data.code,
+        error: errorMessage,
+        errorCode: errorCode,
         success: false,
         data: null,
       };

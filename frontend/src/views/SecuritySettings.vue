@@ -428,7 +428,7 @@ async function testApiKey() {
     console.error('测试 VirusTotal API Key 失败:', error);
     testResult.value = {
       type: 'error',
-      message: error.response?.data?.message || i18n.t('connectionFailed') || 'API Key 验证失败，请检查是否正确'
+      message: error.error || i18n.t('connectionFailed') || 'API Key 验证失败，请检查是否正确'
     };
   } finally {
     testing.value = false;
@@ -529,7 +529,7 @@ async function testSmtp() {
     console.error('测试 SMTP 失败:', error);
     smtpTestResult.value = {
       type: 'error',
-      message: error.response?.data?.message || i18n.t('connectionFailed') || '连接失败，请检查配置'
+      message: error.error || i18n.t('connectionFailed') || '连接失败，请检查配置'
     };
   } finally {
     testingSmtp.value = false;
@@ -550,7 +550,7 @@ async function sendTestEmail() {
     testEmailForm.value.to = '';
   } catch (error) {
     console.error('发送测试邮件失败:', error);
-    ElMessage.error(error.response?.data?.message || i18n.t('sendFailed') || '发送失败');
+    ElMessage.error(error.error || i18n.t('sendFailed') || '发送失败');
   } finally {
     sendingTestEmail.value = false;
   }
