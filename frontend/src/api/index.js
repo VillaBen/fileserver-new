@@ -25,7 +25,11 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   (response) => {
-    // 直接返回 response.data，简化调用方式
+    // 对于 blob 类型的响应，保留完整响应对象
+    if (response.config.responseType === 'blob') {
+      return response;
+    }
+    // 其他情况直接返回 response.data，简化调用方式
     return response.data;
   },
   async (error) => {

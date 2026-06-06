@@ -222,6 +222,7 @@ export const useFilesStore = defineStore('files', () => {
   async function downloadFile(fileId) {
     try {
       const response = await filesAPI.download(fileId);
+      // 响应拦截器已经为 blob 类型保留了完整响应
       if (response.config?.responseType === 'blob') {
         return response.data;
       }
@@ -235,6 +236,7 @@ export const useFilesStore = defineStore('files', () => {
   async function previewFile(fileId) {
     try {
       const response = await filesAPI.preview(fileId);
+      // 响应拦截器已经为 blob 类型保留了完整响应
       if (response.config?.responseType === 'blob') {
         return response.data;
       }
