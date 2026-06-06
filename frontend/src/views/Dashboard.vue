@@ -230,6 +230,8 @@
         :auto-upload="false"
         v-model:file-list="uploadFiles"
         multiple
+        :show-file-list="false"
+        @change="handleFileChange"
       >
         <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
         <div class="el-upload__text">{{ i18n.t('dropFilesHere') }}<em>{{ i18n.t('clickToUpload') }}</em></div>
@@ -237,6 +239,39 @@
           <div class="el-upload__tip">{{ i18n.t('uploadTip') }}</div>
         </template>
       </el-upload>
+      
+      <!-- Custom file list with security status and delete icon -->
+      <div v-if="uploadFiles.length > 0" class="upload-file-list">
+        <div v-for="(file, index) in uploadFiles" :key="index" class="upload-file-item">
+          <div class="file-icon">
+            <Document />
+          </div>
+          <div class="file-info">
+            <div class="file-name">{{ file.name }}</div>
+            <div class="file-size">{{ formatFileSize(file.size) }}</div>
+          </div>
+          <div class="file-security-status">
+            <el-tooltip :content="file.securityStatusText || 'Scanning...'" placement="top">
+              <el-icon :size="18">
+                <Loading v-if="file.scanning" />
+                <CircleCheck v-else-if="file.securityStatus === 'safe'" class="safe" />
+                <Warning v-else-if="file.securityStatus === 'warning'" class="warning" />
+                <CircleClose v-else-if="file.securityStatus === 'dangerous'" class="danger" />
+                <QuestionFilled v-else class="unknown" />
+              </el-icon>
+            </el-tooltip>
+          </div>
+          <div class="file-actions">
+            <el-button 
+              type="text" 
+              @click="removeUploadFile(index)" 
+              class="delete-btn"
+            >
+              <el-icon><Delete /></el-icon>
+            </el-button>
+          </div>
+        </div>
+      </div>
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="handleCloseUploadDialog">{{ i18n.t('cancel') }}</el-button>
@@ -431,7 +466,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Upload, FolderAdd, Search, Grid, List, Folder, TrendCharts, Download, Share, UploadFilled, Document, Edit, Delete, ArrowUp, ArrowDown, Sort, CopyDocument, Setting } from '@element-plus/icons-vue';
+import { Upload, FolderAdd, Search, Grid, List, Folder, TrendCharts, Download, Share, UploadFilled, Document, Edit, Delete, ArrowUp, ArrowDown, Sort, CopyDocument, Setting, CircleCheck, Warning, CircleClose, QuestionFilled, Loading } from '@element-plus/icons-vue';
 import { useI18nStore } from '@/stores/i18n';
 import { useFilesStore } from '@/stores/files';
 import { useAuthStore } from '@/stores/auth';
@@ -717,7 +752,17 @@ const handleUpload = async () => {
 
 // 处理文件选择变化
 const handleFileChange = (file, fileList) => {
-  uploadFiles.value = fileList;
+  uploadFiles.value = fileList.map(f => ({
+    ...f,
+    scanning: true,
+    securityStatus: 'pending',
+    securityStatusText: 'Scanning...'
+  }));
+};
+
+// 移除上传文件
+const removeUploadFile = (index) => {
+  uploadFiles.value.splice(index, 1);
 };
 
 // 关闭上传对话框
@@ -1113,6 +1158,84 @@ const copyShareLink = () => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.upload-file-list {
+  margin-top: 16px;
+  border-top: 1px solid var(--el-border-color-lighter);
+  padding-top: 16px;
+}
+
+.upload-file-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--el-bg-color-page);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.upload-file-item:last-child {
+  margin-bottom: 0;
+}
+
+.upload-file-item .file-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--el-color-primary-light-9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--el-color-primary);
+}
+
+.upload-file-item .file-info {
+  flex: 1;
+}
+
+.upload-file-item .file-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+}
+
+.upload-file-item .file-size {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.upload-file-item .file-security-status {
+  padding: 4px;
+}
+
+.upload-file-item .file-security-status .safe {
+  color: var(--el-color-success);
+}
+
+.upload-file-item .file-security-status .warning {
+  color: var(--el-color-warning);
+}
+
+.upload-file-item .file-security-status .danger {
+  color: var(--el-color-danger);
+}
+
+.upload-file-item .file-security-status .unknown {
+  color: var(--el-text-color-placeholder);
+}
+
+.upload-file-item .file-actions {
+  padding: 4px;
+}
+
+.upload-file-item .file-actions .delete-btn {
+  color: var(--el-text-color-placeholder);
+}
+
+.upload-file-item .file-actions .delete-btn:hover {
+  color: var(--el-color-danger);
 }
 
 .preview-dialog :deep(.el-dialog__body) {

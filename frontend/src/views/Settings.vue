@@ -197,14 +197,14 @@
             <el-icon :size="24"><Delete /></el-icon>
           </div>
           <div>
-            <h2 class="settings-card-title">回收站自动删除</h2>
-            <p class="settings-card-desc">设置回收站中的文件自动删除规则</p>
+            <h2 class="settings-card-title">{{ i18n.t('trashAutoDelete') || '回收站自动删除' }}</h2>
+            <p class="settings-card-desc">{{ i18n.t('trashAutoDeleteDesc') || '设置回收站中的文件自动删除规则' }}</p>
           </div>
         </div>
         
         <div class="settings-card-body">
           <el-form label-position="top">
-            <el-form-item label="启用自动删除">
+            <el-form-item :label="i18n.t('enableAutoDelete') || '启用自动删除'">
               <el-switch 
                 v-model="trashAutoDeleteEnabled" 
                 @change="handleTrashAutoDeleteToggle"
@@ -212,26 +212,26 @@
             </el-form-item>
             
             <el-form-item 
-              label="自动删除时间（天）" 
+              :label="i18n.t('autoDeleteDays') || '自动删除时间（天）'" 
               :disabled="!trashAutoDeleteEnabled"
             >
               <el-select 
                 v-model="trashAutoDeleteDays" 
                 :disabled="!trashAutoDeleteEnabled"
-                placeholder="选择天数"
+                :placeholder="i18n.t('selectDays') || '选择天数'"
                 @change="handleTrashAutoDeleteDaysChange"
                 style="width: 200px;"
               >
-                <el-option :value="7" label="7天" />
-                <el-option :value="14" label="14天" />
-                <el-option :value="30" label="30天" />
-                <el-option :value="60" label="60天" />
-                <el-option :value="90" label="90天" />
+                <el-option :value="7" :label="i18n.t('sevenDays') || '7天'" />
+                <el-option :value="14" :label="i18n.t('fourteenDays') || '14天'" />
+                <el-option :value="30" :label="i18n.t('thirtyDays') || '30天'" />
+                <el-option :value="60" :label="i18n.t('sixtyDays') || '60天'" />
+                <el-option :value="90" :label="i18n.t('ninetyDays') || '90天'" />
               </el-select>
             </el-form-item>
             
             <div v-if="trashAutoDeleteEnabled" class="trash-auto-delete-hint">
-              <p>回收站中的文件将在 {{ trashAutoDeleteDays }} 天后自动永久删除。</p>
+              <p>{{ i18n.t('trashAutoDeleteHint', { days: trashAutoDeleteDays }) || `回收站中的文件将在 ${trashAutoDeleteDays} 天后自动永久删除。` }}</p>
             </div>
           </el-form>
         </div>
@@ -615,9 +615,9 @@ const handleTrashAutoDeleteToggle = async (enabled) => {
       trashAutoDeleteDays: enabled ? trashAutoDeleteDays.value : null
     });
     await authStore.fetchUser();
-    toast.success(enabled ? '回收站自动删除已启用' : '回收站自动删除已禁用');
+    toast.success(enabled ? i18n.t('trashAutoDeleteEnabled') : i18n.t('trashAutoDeleteDisabled'));
   } catch (error) {
-    toast.error(error.error || '更新回收站设置失败');
+    toast.error(error.error || i18n.t('trashAutoDeleteUpdateFailed'));
     trashAutoDeleteEnabled.value = !enabled;
   }
 };
@@ -628,9 +628,9 @@ const handleTrashAutoDeleteDaysChange = async (days) => {
       trashAutoDeleteDays: days
     });
     await authStore.fetchUser();
-    toast.success(`回收站自动删除时间已更新为 ${days} 天`);
+    toast.success(i18n.t('trashAutoDeleteDaysUpdated', { days }));
   } catch (error) {
-    toast.error(error.error || '更新回收站设置失败');
+    toast.error(error.error || i18n.t('trashAutoDeleteUpdateFailed'));
   }
 };
 

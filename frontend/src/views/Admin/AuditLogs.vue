@@ -82,8 +82,13 @@ async function loadLogs() {
 }
 
 function formatTime(date) {
+  if (!date) return '';
+  
   const now = new Date();
   const diff = now - new Date(date);
+  
+  if (isNaN(diff)) return '';
+  
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
