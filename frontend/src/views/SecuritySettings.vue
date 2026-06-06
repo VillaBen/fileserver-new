@@ -184,9 +184,11 @@
           <el-form :model="scanModeForm" label-position="top">
             <el-form-item :label="i18n.t('currentMode') || '当前模式'">
               <el-select v-model="scanModeForm.mode" size="large" :disabled="loading">
+                <el-option label="多引擎扫描 (Multi-scan)" value="multi-scan" />
                 <el-option label="混合模式 (Hybrid)" value="hybrid" />
                 <el-option label="仅文件头检测" value="file-header" />
                 <el-option label="ClamAV 扫描" value="clamav" />
+                <el-option label="VirusTotal 云端扫描" value="virustotal" />
                 <el-option label="禁用" value="disabled" />
               </el-select>
             </el-form-item>
@@ -385,18 +387,17 @@ async function testApiKey() {
     testing.value = true;
     testResult.value = null;
 
-    // 模拟测试
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await settingsApi.testVirusTotalApiKey(apiKeyForm.value.apiKey);
 
-    // 这里应该调用实际的 VirusTotal API 测试
     testResult.value = {
       type: 'success',
       message: i18n.t('connectionSuccess') || 'API Key 验证成功，连接正常'
     };
   } catch (error) {
+    console.error('测试 VirusTotal API Key 失败:', error);
     testResult.value = {
       type: 'error',
-      message: i18n.t('connectionFailed') || 'API Key 验证失败，请检查是否正确'
+      message: error.response?.data?.message || i18n.t('connectionFailed') || 'API Key 验证失败，请检查是否正确'
     };
   } finally {
     testing.value = false;

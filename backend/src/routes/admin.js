@@ -33,4 +33,7 @@ router.get('/security-settings', systemSettingsController.getSettings);
 router.post('/settings/test-smtp', systemSettingsController.testSmtp);
 router.post('/settings/send-test-email', systemSettingsController.sendTestEmail);
 
+// VirusTotal API 测试
+router.post('/settings/test-virustotal', systemSettingsController.testVirusTotal);
+
 module.exports = router;

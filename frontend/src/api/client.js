@@ -25,6 +25,12 @@ export default {
     return response.data?.virustotal_api_key || '';
   },
 
+  // 测试 VirusTotal API Key
+  async testVirusTotalApiKey(apiKey) {
+    const response = await apiClient.post('/admin/settings/test-virustotal', { apiKey });
+    return response.data;
+  },
+
   // 测试 SMTP 连接
   async testSmtp(config) {
     const response = await apiClient.post('/admin/settings/test-smtp', config);

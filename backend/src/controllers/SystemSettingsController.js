@@ -90,15 +90,77 @@ async function testSmtp(req, res) {
   }
 }
 
+// 测试 VirusTotal API
+async function testVirusTotal(req, res) {
+  try {
+    const { apiKey } = req.body;
+    
+    if (!apiKey) {
+      return res.apiError('请填写 VirusTotal API Key', 'VALIDATION_ERROR');
+    }
+
+    // 使用一个安全文件的哈希进行测试 (EICAR test file SHA-256)
+    // 注意：我们使用一个已知安全的文件哈希来测试
+    const testHash = '275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f';
+    
+    const https = require('https');
+    const { URL } = require('url');
+    
+    const url = new URL(`/api/v3/files/${testHash}`, 'https://www.virustotal.com');
+    const requestOptions = {
+      hostname: url.hostname,
+      port: url.port || 443,
+      path: url.pathname + url.search,
+      method: 'GET',
+      headers: {
+        'x-apikey': apiKey
+      },
+      timeout: 10000
+    };
+
+    const result = await new Promise((resolve, reject) => {
+      const req = https.request(requestOptions, (res) => {
+        let responseBody = '';
+        res.on('data', (chunk) => {
+          responseBody += chunk;
+        });
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve({ statusCode: res.statusCode, data: JSON.parse(responseBody) });
+          } else if (res.statusCode === 404) {
+            // 404是正常的，说明测试文件不在数据库中，但API Key有效
+            resolve({ statusCode: res.statusCode, data: null });
+          } else {
+            reject(new Error(`API Error: ${res.statusCode}`));
+          }
+        });
+      });
+
+      req.on('error', reject);
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Request Timeout'));
+      });
+
+      req.end();
+    });
+
+    res.apiSuccess(null, 'VirusTotal API Key 验证成功');
+  } catch (error) {
+    console.error('测试 VirusTotal API 失败:', error);
+    res.apiError('验证失败: ' + error.message, 'VIRUSTOTAL_TEST_ERROR');
+  }
+}
+
 // 发送测试邮件
 async function sendTestEmail(req, res) {
   try {
     const { to } = req.body;
-    
+
     if (!to) {
       return res.apiError('请填写收件人邮箱', 'VALIDATION_ERROR');
     }
-    
+
     const html = `
       <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
         <h2 style="color: #333;">🎉 FileCloud 邮件配置成功!</h2>
@@ -106,13 +168,13 @@ async function sendTestEmail(req, res) {
         <p style="color: #909399; font-size: 12px;">发送时间: ${new Date().toLocaleString()}</p>
       </div>
     `;
-    
+
     await sendEmail({
       to,
       subject: 'FileCloud 测试邮件',
       html
     });
-    
+
     res.apiSuccess(null, '测试邮件已发送');
   } catch (error) {
     console.error('发送测试邮件失败:', error);
@@ -124,5 +186,6 @@ module.exports = {
   getSettings,
   updateSettings,
   testSmtp,
-  sendTestEmail
+  sendTestEmail,
+  testVirusTotal
 };
