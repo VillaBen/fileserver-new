@@ -12,7 +12,59 @@
 
 ---
 
-## 2026-06-04
+## 2026-06-06
+
+### P1 - 安全设置页面权限控制修复
+
+**问题描述**：
+普通用户可以在侧边栏看到安全设置入口，并且可以直接通过 URL 访问安全设置页面。安全设置功能仅限管理员使用，普通用户无权访问。
+
+**问题分析**：
+1. `AppLayout.vue` 中 `navItems` 计算属性将安全设置入口放在所有用户的导航中，没有检查用户角色
+2. `/security-settings` 路由缺少 `requiresAdmin` 权限标记
+
+**修复文件**：
+- [AppLayout.vue](file:///workspace/frontend/src/components/AppLayout.vue)
+- [router/index.js](file:///workspace/frontend/src/router/index.js)
+
+**修复内容**：
+1. 将安全设置入口移到 admin 检查内部，只有 `user.value?.role === 'admin'` 时才显示
+2. 为 `/security-settings` 路由添加 `meta: { requiresAdmin: true }`
+3. 修正 `admin.js` 中误导性注释（原注释称"供普通用户使用"，实际是管理员接口）
+
+**代码变更**：
+```javascript
+// AppLayout.vue - navItems computed
+if (user.value?.role === 'admin') {
+  items.push({
+    path: '/security-settings',
+    label: i18n.t('securitySettings') || '安全设置',
+    icon: '<svg>...</svg>'
+  });
+  items.push({
+    path: '/admin',
+    label: i18n.t('adminPanel') || 'Admin',
+    icon: '<svg>...</svg>',
+    isAdmin: true
+  });
+}
+```
+
+```javascript
+// router/index.js - security-settings route
+{
+  path: 'security-settings',
+  name: 'SecuritySettings',
+  component: SecuritySettings,
+  meta: { requiresAdmin: true },  // 新增
+},
+```
+
+**当前完成度**：100%
+
+---
+
+## 2026-04
 
 ### P1 - 回收站恢复时冲突对话框功能完善
 

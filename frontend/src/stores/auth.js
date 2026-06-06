@@ -38,11 +38,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function init() {
-    // 先清除旧的localStorage数据，确保使用新的API路径
-    console.log('[Avatar-init] 1. 清除旧的localStorage数据');
-    localStorage.removeItem(STORAGE_KEY);
-    
+    // 先从 localStorage 加载用户信息
     loadFromStorage();
+    
+    // 获取 CSRF token
     try {
       const tokenResponse = await commonAPI.getCsrfToken();
       if (tokenResponse.success) {
@@ -200,9 +199,6 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       console.log('[Avatar-fetchUser] 1. 开始获取用户信息...');
       
-      // 先清除localStorage中的旧数据，确保获取最新数据
-      localStorage.removeItem(STORAGE_KEY);
-      
       const response = await authAPI.getMe();
       console.log('[Avatar-fetchUser] 2. API响应:', response);
       console.log('[Avatar-fetchUser] 3. API响应数据:', response?.data);
@@ -217,8 +213,8 @@ export const useAuthStore = defineStore('auth', () => {
       }
     } catch (error) {
       console.error('[Avatar-fetchUser] 获取用户信息失败:', error);
-      user.value = null;
-      saveToStorage();
+      // API 失败时不清除用户状态，保留 localStorage 中的数据
+      // 这样可以确保服务器重启后用户状态不会丢失
     }
     return null;
   }
