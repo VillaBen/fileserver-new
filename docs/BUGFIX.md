@@ -2301,3 +2301,136 @@ Trash 页面使用硬编码的假数据，没有与真实的后端 API 集成。
 
 **当前完成度**: 100%
 
+
+
+---
+
+## 2026-06-06 (续2)
+
+### P1 - 安全设置页面数据无法保存/加载修复
+
+**问题描述**:
+1. 用户在安全设置页面选择病毒扫描模式后，刷新页面设置恢复为默认值
+2. VirusTotal API Key 配置也无法正确保存和加载
+
+**根本原因**:
+1. API 响应拦截器与前端调用代码的数据访问路径不一致
+2. `client.js` 中的函数重复访问 `.data` 属性，导致路径错误
+
+**修复文件**:
+- [frontend/src/api/index.js](file:///workspace/frontend/src/api/index.js)
+- [frontend/src/api/client.js](file:///workspace/frontend/src/api/client.js)
+- [frontend/src/views/SecuritySettings.vue](file:///workspace/frontend/src/views/SecuritySettings.vue)
+
+**修复内容**:
+1. **修改 API 响应拦截器**:
+   - 添加 blob 类型响应特殊处理，保留完整响应对象
+   - 其他类型响应继续返回 `response.data`
+
+2. **修复 client.js API 函数**:
+   - 统一所有 API 调用的返回方式
+   - 移除重复的 `.data` 访问
+
+3. **修复 SecuritySettings.vue**:
+   - 修复 `loadCurrentScanMode()` 函数的数据访问路径
+   - 确保与 API 响应格式一致
+
+**代码变更**:
+```javascript
+// api/index.js - 响应拦截器
+apiClient.interceptors.response.use(
+  (response) => {
+    // 对于 blob 类型的响应，保留完整响应对象
+    if (response.config.responseType === 'blob') {
+      return response;
+    }
+    // 其他情况直接返回 response.data，简化调用方式
+    return response.data;
+  },
+  // ... 错误处理保持不变
+);
+```
+
+**当前完成度**: 100%
+
+---
+
+### P1 - 高危操作确认对话框实现
+
+**问题描述**:
+禁用病毒扫描是高危操作，但没有足够的确认提示。未来的账户注销等操作也需要类似机制。
+
+**修复文件**:
+- [frontend/src/components/HighRiskConfirmDialog.vue](file:///workspace/frontend/src/components/HighRiskConfirmDialog.vue)（新建）
+- [frontend/src/views/SecuritySettings.vue](file:///workspace/frontend/src/views/SecuritySettings.vue)
+
+**修复内容**:
+1. **新建通用确认组件 HighRiskConfirmDialog.vue**:
+   - 支持多步确认流程
+   - 最后一步有 10 秒倒计时保护
+   - 可自定义每个步骤的标题、消息和确认按钮文本
+
+2. **集成到安全设置页面**:
+   - 当选择"禁用"病毒扫描模式时触发确认
+   - 三步确认流程：
+     1. 确认禁用
+     2. 风险警告
+     3. 最终确认（含 10 秒倒计时）
+
+**组件使用方法**:
+```javascript
+<HighRiskConfirmDialog
+  v-model="showDialog"
+  :steps="[
+    { title: '确认', message: '确定要执行此操作？', confirmText: '继续' },
+    { title: '警告', message: '此操作有风险！', confirmText: '我理解' },
+    { title: '最终确认', message: '真的要继续？', confirmText: '确认' }
+  ]"
+  @confirm="handleConfirm"
+  @cancel="handleCancel"
+/>
+```
+
+**当前完成度**: 100%
+
+---
+
+### P1 - 病毒扫描功能完善与 VirusTotal 集成
+
+**问题描述**:
+缺少 VirusTotal 云端扫描支持，病毒扫描模式选择有限。
+
+**修复文件**:
+- [backend/src/middleware/malwareScanner.js](file:///workspace/backend/src/middleware/malwareScanner.js)
+- [backend/src/config/database.js](file:///workspace/backend/src/config/database.js)
+- [backend/.env.example](file:///workspace/backend/.env.example)
+- [backend/scripts/init-test-user.js](file:///workspace/backend/scripts/init-test-user.js)（新建）
+
+**修复内容**:
+1. **完善病毒扫描器**:
+   - 新增 6 种扫描模式：
+     - `file-header` - 文件头快速检测（默认）
+     - `clamav` - ClamAV 本地扫描
+     - `hybrid` - 混合模式（文件头 + ClamAV）
+     - `virustotal` - VirusTotal 云端扫描
+     - `multi-scan` - 多引擎扫描（推荐）
+     - `disabled` - 禁用
+
+2. **VirusTotal 集成**:
+   - 自动哈希优先检查（节省 API 配额）
+   - 文件上传和分析
+   - 支持可选等待分析完成
+   - 可配置检测阈值
+
+3. **更新数据库初始化**:
+   - 添加默认扫描模式设置（`hybrid`）
+
+4. **更新环境变量示例**:
+   - 添加完整的 VirusTotal 配置说明
+
+5. **创建测试用户初始化脚本**:
+   - 自动创建测试用户（用户名：test，密码：test123）
+   - 自动检查用户是否已存在，避免重复创建
+
+**当前完成度**: 100%
+
