@@ -18,24 +18,48 @@ const checkUsername = async (req, res) => {
     const accountId = req.user?.id;
 
     if (!username) {
-      return res.apiError('用户名不能为空', 'VALIDATION_ERROR');
+      return res.apiSuccess({
+        available: false,
+        valid: false,
+        errors: ['用户名不能为空'],
+        username: ''
+      });
+    }
+
+    // 验证用户名格式
+    const validation = validateUsername(username);
+    
+    if (!validation.valid) {
+      return res.apiSuccess({
+        available: false,
+        valid: false,
+        errors: validation.errors,
+        username: username
+      });
     }
 
     // 查找是否有其他用户使用这个用户名
     const query = accountId 
       ? 'SELECT id FROM accounts WHERE username = ? AND id != ?'
       : 'SELECT id FROM accounts WHERE username = ?';
-    const params = accountId ? [username, accountId] : [username];
+    const params = accountId ? [validation.clean, accountId] : [validation.clean];
     
     const existingUser = await db.asyncGet(query, params);
 
     res.apiSuccess({
       available: !existingUser,
+      valid: true,
+      errors: [],
       username: username
     });
   } catch (error) {
     console.error('检查用户名错误:', error);
-    res.apiError('检查失败', 'CHECK_USERNAME_ERROR');
+    res.apiSuccess({
+      available: false,
+      valid: false,
+      errors: ['检查失败'],
+      username: username || ''
+    });
   }
 };
 
@@ -48,15 +72,22 @@ const checkEmail = async (req, res) => {
     const accountId = req.user?.id;
 
     if (!email) {
-      return res.apiError('邮箱不能为空', 'VALIDATION_ERROR');
-    }
-
-    // 邮箱格式验证
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
       return res.apiSuccess({
         available: false,
         valid: false,
+        errors: ['邮箱不能为空'],
+        email: ''
+      });
+    }
+
+    // 验证邮箱格式
+    const validation = validateEmail(email, false);
+    
+    if (!validation.valid) {
+      return res.apiSuccess({
+        available: false,
+        valid: false,
+        errors: validation.errors,
         email: email
       });
     }
@@ -68,7 +99,7 @@ const checkEmail = async (req, res) => {
     for (const account of allAccounts) {
       try {
         const decryptedEmail = decrypt(account.email);
-        if (decryptedEmail === email) {
+        if (decryptedEmail === validation.clean) {
           if (!accountId || account.id !== accountId) {
             existingUser = account;
             break;
@@ -82,11 +113,17 @@ const checkEmail = async (req, res) => {
     res.apiSuccess({
       available: !existingUser,
       valid: true,
+      errors: [],
       email: email
     });
   } catch (error) {
     console.error('检查邮箱错误:', error);
-    res.apiError('检查失败', 'CHECK_EMAIL_ERROR');
+    res.apiSuccess({
+      available: false,
+      valid: false,
+      errors: ['检查失败'],
+      email: email || ''
+    });
   }
 };
 
