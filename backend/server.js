@@ -67,18 +67,18 @@ async function startServer() {
       console.log('✅ 上传目录已创建');
     }
 
-    // 初始化 ClamAV（如果配置了）
-    const scanMode = process.env.MALWARE_SCAN_MODE;
-    if (scanMode === 'clamav' || scanMode === 'hybrid') {
-      console.log('🔍 正在初始化 ClamAV...');
-      await initClamAV();
-    }
+    // 初始化 ClamAV（总是尝试）
+    console.log('🔍 正在初始化 ClamAV...');
+    await initClamAV();
+
+    // 获取扫描模式
+    const scanMode = process.env.MALWARE_SCAN_MODE || 'file-header';
 
     // 监听端口
     app.listen(PORT, () => {
       console.log(`🎉 FileCloud 服务器已启动: http://localhost:${PORT}`);
       console.log(`📁 API地址: http://localhost:${PORT}/api`);
-      console.log(`🛡️  恶意文件检测模式: ${scanMode || 'file-header'}`);
+      console.log(`🛡️  恶意文件检测模式: ${scanMode}`);
     });
   } catch (error) {
     console.error('❌ 服务器启动失败:', error);
