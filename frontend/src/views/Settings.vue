@@ -679,7 +679,7 @@ const checkUsernameAvailability = async () => {
   usernameCheckStatus.value = 'checking';
   try {
     const response = await userAPI.checkUsername(username);
-    if (response.success && response.data) {
+    if (response.success) {
       usernameCheckStatus.value = response.data.available ? 'available' : 'taken';
     }
   } catch (error) {
@@ -699,7 +699,7 @@ const checkEmailAvailability = async () => {
   emailCheckStatus.value = 'checking';
   try {
     const response = await userAPI.checkEmail(email);
-    if (response.success && response.data) {
+    if (response.success) {
       if (!response.data.valid) {
         emailCheckStatus.value = 'invalid';
       } else {
