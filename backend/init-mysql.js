@@ -12,7 +12,7 @@ async function run() {
   const conn = await mysqlDb.pool.getConnection();
   const [tables] = await conn.execute('SHOW TABLES');
   console.log('Tables created:', tables.length);
-  tables.forEach(t =&gt; console.log('  -', Object.values(t)[0]));
+  tables.forEach(t => console.log('  -', Object.values(t)[0]));
   conn.release();
 }
 

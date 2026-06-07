@@ -135,7 +135,7 @@ async function run() {
     ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
   ];
   
-  for (let i = 0; i &lt; sql.length; i++) {
+  for (let i = 0; i < sql.length; i++) {
     await conn.execute(sql[i]);
   }
   

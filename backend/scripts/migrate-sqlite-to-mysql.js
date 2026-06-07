@@ -18,7 +18,7 @@ async function migrate() {
   
   console.log('Migrating accounts...');
   const accounts = await sqliteDb.db.asyncAll('SELECT * FROM accounts');
-  for (let i = 0; i &lt; accounts.length; i++) {
+  for (let i = 0; i < accounts.length; i++) {
     const a = accounts[i];
     await mysqlDb.db.asyncRun(
       'INSERT INTO accounts (id, username, email, password_hash, role, status, storage_quota, avatar, two_factor_enabled, two_factor_secret, failed_login_attempts, locked_until, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -29,7 +29,7 @@ async function migrate() {
   
   console.log('Migrating user_profiles...');
   const profiles = await sqliteDb.db.asyncAll('SELECT * FROM user_profiles');
-  for (let i = 0; i &lt; profiles.length; i++) {
+  for (let i = 0; i < profiles.length; i++) {
     const p = profiles[i];
     await mysqlDb.db.asyncRun(
       'INSERT INTO user_profiles (id, account_id, storage_quota, language, avatar, security_question, security_answer_hash, two_factor_enabled, two_factor_secret, email_verified, email_verification_token, email_reminder_disabled, trash_auto_delete_enabled, trash_auto_delete_days, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -40,7 +40,7 @@ async function migrate() {
   
   console.log('Migrating files...');
   const files = await sqliteDb.db.asyncAll('SELECT * FROM files');
-  for (let i = 0; i &lt; files.length; i++) {
+  for (let i = 0; i < files.length; i++) {
     const f = files[i];
     await mysqlDb.db.asyncRun(
       'INSERT INTO files (id, account_id, original_name, filename, filepath, size, mime_type, folder_id, in_trash, is_encrypted, file_hash, security_status, scan_mode, scan_result, scan_at, deleted_at, type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -51,7 +51,7 @@ async function migrate() {
   
   console.log('Migrating shares...');
   const shares = await sqliteDb.db.asyncAll('SELECT * FROM shares');
-  for (let i = 0; i &lt; shares.length; i++) {
+  for (let i = 0; i < shares.length; i++) {
     const s = shares[i];
     await mysqlDb.db.asyncRun(
       'INSERT INTO shares (id, file_id, account_id, share_code, password_hash, expires_at, max_downloads, download_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -62,7 +62,7 @@ async function migrate() {
   
   console.log('Migrating audit_logs...');
   const logs = await sqliteDb.db.asyncAll('SELECT * FROM audit_logs');
-  for (let i = 0; i &lt; logs.length; i++) {
+  for (let i = 0; i < logs.length; i++) {
     const l = logs[i];
     await mysqlDb.db.asyncRun(
       'INSERT INTO audit_logs (id, account_id, action, ip_address, user_agent, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -73,7 +73,7 @@ async function migrate() {
   
   console.log('Migrating recovery_codes...');
   const codes = await sqliteDb.db.asyncAll('SELECT * FROM recovery_codes');
-  for (let i = 0; i &lt; codes.length; i++) {
+  for (let i = 0; i < codes.length; i++) {
     const c = codes[i];
     await mysqlDb.db.asyncRun(
       'INSERT INTO recovery_codes (id, account_id, code, used, used_at, created_at) VALUES (?, ?, ?, ?, ?, ?)',
@@ -84,7 +84,7 @@ async function migrate() {
   
   console.log('Migrating email_codes...');
   const ec = await sqliteDb.db.asyncAll('SELECT * FROM email_codes');
-  for (let i = 0; i &lt; ec.length; i++) {
+  for (let i = 0; i < ec.length; i++) {
     const e = ec[i];
     await mysqlDb.db.asyncRun(
       'INSERT INTO email_codes (id, email, purpose, code, expires_at, attempts, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -95,7 +95,7 @@ async function migrate() {
   
   console.log('Migrating password_resets...');
   const pr = await sqliteDb.db.asyncAll('SELECT * FROM password_resets');
-  for (let i = 0; i &lt; pr.length; i++) {
+  for (let i = 0; i < pr.length; i++) {
     const p = pr[i];
     await mysqlDb.db.asyncRun(
       'INSERT INTO password_resets (id, account_id, token, expires_at, used, created_at) VALUES (?, ?, ?, ?, ?, ?)',
@@ -106,7 +106,7 @@ async function migrate() {
   
   console.log('Migrating system_settings...');
   const ss = await sqliteDb.db.asyncAll('SELECT * FROM system_settings');
-  for (let i = 0; i &lt; ss.length; i++) {
+  for (let i = 0; i < ss.length; i++) {
     const s = ss[i];
     await mysqlDb.db.asyncRun(
       'INSERT INTO system_settings (id, `key`, value, updated_at) VALUES (?, ?, ?, ?)',
