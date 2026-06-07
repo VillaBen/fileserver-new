@@ -3,7 +3,7 @@
  */
 
 const nodemailer = require('nodemailer');
-const { db } = require('../config/database');
+const { db } = require('../config/database.adapter');
 const { decrypt } = require('../utils/encryption');
 
 // 获取邮件配置

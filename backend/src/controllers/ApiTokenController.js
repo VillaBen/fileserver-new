@@ -1,4 +1,4 @@
-const { db } = require('../config/database');
+const { db } = require('../config/database.adapter');
 const { encrypt, decrypt } = require('../utils/encryption');
 const { v4: uuidv4 } = require('uuid');
 

@@ -2,7 +2,7 @@
  * 用户控制器
  */
 
-const { db } = require('../config/database');
+const { db } = require('../config/database.adapter');
 const { encrypt, decrypt, hashPassword, verifyPassword } = require('../utils/encryption');
 const path = require('path');
 const fs = require('fs');

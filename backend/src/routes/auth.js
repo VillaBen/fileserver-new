@@ -5,7 +5,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { db } = require('../config/database');
+const { db } = require('../config/database.adapter');
 const ApiResponse = require('../utils/response');
 const { generateToken } = require('../utils/jwt');
 const { encrypt, decrypt } = require('../utils/encryption');

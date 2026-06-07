@@ -2,7 +2,7 @@
  * 系统设置控制器
  */
 
-const { db } = require('../config/database');
+const { db } = require('../config/database.adapter');
 const { encrypt, decrypt } = require('../utils/encryption');
 const { testConnection, sendEmail } = require('../utils/email');
 

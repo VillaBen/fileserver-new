@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // scripts/init-db.js
 require('dotenv').config();
-const { initDatabase } = require('../src/config/database');
+const { initDatabase } = require('../src/config/database.adapter');
 const logger = require('../src/utils/logger');
 
 async function main() {
