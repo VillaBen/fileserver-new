@@ -14,7 +14,7 @@ const apiResponseHandler = require('./src/middleware/response');
 const errorHandler = require('./src/middleware/error');
 const { requireAuth, requireAdmin } = require('./src/middleware/auth');
 const { setupRoutes } = require('./src/routes');
-const { initClamAV } = require('./src/middleware/malwareScanner');
+const { initClamAV, getConfig } = require('./src/middleware/malwareScanner');
 
 // 创建Express应用
 const app = express();
@@ -71,8 +71,12 @@ async function startServer() {
     console.log('🔍 正在初始化 ClamAV...');
     await initClamAV();
 
+    // 加载并显示安全配置状态
+    console.log('⚙️  正在加载安全配置...');
+    const config = await getConfig();
+
     // 获取扫描模式
-    const scanMode = process.env.MALWARE_SCAN_MODE || 'file-header';
+    const scanMode = config.scanMode || 'file-header';
 
     // 监听端口
     app.listen(PORT, () => {
