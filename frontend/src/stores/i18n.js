@@ -611,7 +611,17 @@ const translations = {
     modifiedAt: 'Modified',
     uploadTime: 'Upload Time',
     merge: 'Merge',
-    mergeDesc: 'Merge contents into existing folder'
+    mergeDesc: 'Merge contents into existing folder',
+    // Username and email validation
+    enterUsername: 'Enter username',
+    usernameRequired: 'Username is required',
+    usernameTooShort: 'Username must be at least 3 characters',
+    checking: 'Checking...',
+    usernameAvailable: 'Username is available',
+    usernameTaken: 'Username is already taken',
+    emailAvailable: 'Email is available',
+    emailTaken: 'Email is already taken',
+    invalidEmail: 'Invalid email format'
   },
   // Error code translations (English)
   errors: {
@@ -1274,7 +1284,17 @@ const translations = {
     modifiedAt: '修改时间',
     uploadTime: '上传时间',
     merge: '合并',
-    mergeDesc: '将内容合并到现有文件夹'
+    mergeDesc: '将内容合并到现有文件夹',
+    // Username and email validation (Chinese)
+    enterUsername: '输入用户名',
+    usernameRequired: '用户名是必填项',
+    usernameTooShort: '用户名至少需要3个字符',
+    checking: '检查中...',
+    usernameAvailable: '用户名可用',
+    usernameTaken: '用户名已被占用',
+    emailAvailable: '邮箱可用',
+    emailTaken: '邮箱已被占用',
+    invalidEmail: '邮箱格式不正确'
   },
   // Error code translations (Chinese)
   errors: {

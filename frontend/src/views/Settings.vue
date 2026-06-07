@@ -20,7 +20,7 @@
         </div>
         
         <div class="settings-card-body">
-          <el-form :model="profileForm" label-position="top">
+          <el-form :model="profileForm" label-position="top" ref="profileFormRef">
             <div class="avatar-section">
               <div class="avatar-container">
                 <el-avatar :size="80" :src="avatarUrl">{{ userInitial }}</el-avatar>
@@ -44,7 +44,33 @@
               </div>
             </div>
               
-            <el-form-item :label="i18n.t('displayName')">
+            <el-form-item 
+              :label="i18n.t('username')"
+              :rules="[{ 
+                validator: validateUsername, 
+                trigger: 'blur' 
+              }]"
+            >
+              <el-input 
+                v-model="profileForm.username" 
+                :placeholder="i18n.t('enterUsername')"
+                size="large"
+                @blur="checkUsernameAvailability"
+              />
+              <div v-if="usernameCheckStatus === 'checking'" class="validation-message checking">
+                <el-icon><Loading /></el-icon> {{ i18n.t('checking') }}
+              </div>
+              <div v-else-if="usernameCheckStatus === 'available'" class="validation-message success">
+                <el-icon><CircleCheck /></el-icon> {{ i18n.t('usernameAvailable') }}
+              </div>
+              <div v-else-if="usernameCheckStatus === 'taken'" class="validation-message error">
+                <el-icon><CircleClose /></el-icon> {{ i18n.t('usernameTaken') }}
+              </div>
+            </el-form-item>
+            
+            <el-form-item 
+              :label="i18n.t('displayName')"
+            >
               <el-input 
                 v-model="profileForm.displayName" 
                 :placeholder="i18n.t('yourName')"
@@ -52,13 +78,31 @@
               />
             </el-form-item>
             
-            <el-form-item :label="i18n.t('email')">
+            <el-form-item 
+              :label="i18n.t('email')"
+              :rules="[{ 
+                validator: validateEmail, 
+                trigger: 'blur' 
+              }]"
+            >
               <el-input 
                 v-model="profileForm.email" 
                 :placeholder="i18n.t('yourEmail')"
                 size="large"
-                disabled
+                @blur="checkEmailAvailability"
               />
+              <div v-if="emailCheckStatus === 'checking'" class="validation-message checking">
+                <el-icon><Loading /></el-icon> {{ i18n.t('checking') }}
+              </div>
+              <div v-else-if="emailCheckStatus === 'available'" class="validation-message success">
+                <el-icon><CircleCheck /></el-icon> {{ i18n.t('emailAvailable') }}
+              </div>
+              <div v-else-if="emailCheckStatus === 'taken'" class="validation-message error">
+                <el-icon><CircleClose /></el-icon> {{ i18n.t('emailTaken') }}
+              </div>
+              <div v-else-if="emailCheckStatus === 'invalid'" class="validation-message error">
+                <el-icon><CircleClose /></el-icon> {{ i18n.t('invalidEmail') }}
+              </div>
             </el-form-item>
             
             <el-button type="primary" @click="saveProfile" :loading="savingProfile">
@@ -353,7 +397,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import { User, Lock, Sunny, Moon, Monitor, Guide, Upload, Delete, CircleCheck, DocumentCopy, Folder } from '@element-plus/icons-vue';
+import { User, Lock, Sunny, Moon, Monitor, Guide, Upload, Delete, CircleCheck, DocumentCopy, Folder, Loading, CircleClose } from '@element-plus/icons-vue';
 import { useI18nStore } from '../stores/i18n';
 import { useAuthStore } from '../stores/auth';
 import { userAPI } from '../api';
@@ -367,8 +411,19 @@ const authStore = useAuthStore();
 // Avatar input ref
 const avatarInput = ref(null);
 
+// Profile form ref
+const profileFormRef = ref(null);
+
 // Profile form
 const profileForm = ref({
+  username: '',
+  displayName: '',
+  email: ''
+});
+
+// Original values for comparison
+const originalProfile = ref({
+  username: '',
   displayName: '',
   email: ''
 });
@@ -378,6 +433,10 @@ const uploadingAvatar = ref(false);
 const avatarUrl = ref('');
 const hasAvatar = computed(() => !!avatarUrl.value);
 const userInitial = computed(() => profileForm.value.displayName?.charAt(0).toUpperCase() || '');
+
+// Validation status
+const usernameCheckStatus = ref('idle'); // idle, checking, available, taken
+const emailCheckStatus = ref('idle'); // idle, checking, available, taken, invalid
 
 // Password form
 const passwordForm = ref({
@@ -580,8 +639,80 @@ const copyRecoveryCodes = async () => {
   }
 };
 
-// Load user profile (moved up)
+// Username validation
+const validateUsername = (rule, value, callback) => {
+  if (!value) {
+    callback(new Error(i18n.t('usernameRequired')));
+  } else if (value.length < 3) {
+    callback(new Error(i18n.t('usernameTooShort')));
+  } else if (usernameCheckStatus.value === 'taken') {
+    callback(new Error(i18n.t('usernameTaken')));
+  } else {
+    callback();
+  }
+};
 
+// Email validation
+const validateEmail = (rule, value, callback) => {
+  if (!value) {
+    callback(); // Email is optional
+  } else {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) {
+      callback(new Error(i18n.t('invalidEmail')));
+    } else if (emailCheckStatus.value === 'taken') {
+      callback(new Error(i18n.t('emailTaken')));
+    } else {
+      callback();
+    }
+  }
+};
+
+// Check username availability
+const checkUsernameAvailability = async () => {
+  const username = profileForm.value.username;
+  if (!username || username === originalProfile.value.username) {
+    usernameCheckStatus.value = 'idle';
+    return;
+  }
+  
+  usernameCheckStatus.value = 'checking';
+  try {
+    const response = await userAPI.checkUsername(username);
+    if (response.success && response.data) {
+      usernameCheckStatus.value = response.data.available ? 'available' : 'taken';
+    }
+  } catch (error) {
+    console.error('检查用户名失败:', error);
+    usernameCheckStatus.value = 'idle';
+  }
+};
+
+// Check email availability
+const checkEmailAvailability = async () => {
+  const email = profileForm.value.email;
+  if (!email || email === originalProfile.value.email) {
+    emailCheckStatus.value = 'idle';
+    return;
+  }
+  
+  emailCheckStatus.value = 'checking';
+  try {
+    const response = await userAPI.checkEmail(email);
+    if (response.success && response.data) {
+      if (!response.data.valid) {
+        emailCheckStatus.value = 'invalid';
+      } else {
+        emailCheckStatus.value = response.data.available ? 'available' : 'taken';
+      }
+    }
+  } catch (error) {
+    console.error('检查邮箱失败:', error);
+    emailCheckStatus.value = 'idle';
+  }
+};
+
+// Load user profile (moved up)
 const loadUserProfile = async () => {
   console.log('[Avatar-loadUserProfile] 1. 开始加载用户信息...');
   
@@ -592,8 +723,17 @@ const loadUserProfile = async () => {
     console.log('[Avatar-loadUserProfile] 3. authStore.user.avatarUrl:', authStore.user?.avatarUrl);
     
     if (authStore.user) {
+      profileForm.value.username = authStore.user.username || '';
       profileForm.value.displayName = authStore.user.displayName || authStore.user.username || '';
       profileForm.value.email = authStore.user.email || '';
+      
+      // Save original values
+      originalProfile.value = {
+        username: profileForm.value.username,
+        displayName: profileForm.value.displayName,
+        email: profileForm.value.email
+      };
+      
       // 添加时间戳防止浏览器缓存头像
       const baseAvatarUrl = authStore.user.avatarUrl || '';
       avatarUrl.value = baseAvatarUrl ? baseAvatarUrl + '?t=' + Date.now() : '';
@@ -688,6 +828,15 @@ const removeAvatar = async () => {
 
 // Profile functions
 const saveProfile = async () => {
+  // Validate form first
+  if (profileFormRef.value) {
+    try {
+      await profileFormRef.value.validate();
+    } catch (error) {
+      return;
+    }
+  }
+  
   if (!profileForm.value.displayName.trim()) {
     toast.warning(i18n.t('pleaseEnterName') || 'Please enter your name');
     return;
@@ -695,9 +844,33 @@ const saveProfile = async () => {
   
   savingProfile.value = true;
   try {
-    await userAPI.updateProfile({
+    const updateData = {
       displayName: profileForm.value.displayName
-    });
+    };
+    
+    // Only include username if it changed
+    if (profileForm.value.username !== originalProfile.value.username) {
+      updateData.username = profileForm.value.username;
+    }
+    
+    // Only include email if it changed
+    if (profileForm.value.email !== originalProfile.value.email) {
+      updateData.email = profileForm.value.email;
+    }
+    
+    await userAPI.updateProfile(updateData);
+    
+    // Update original values
+    originalProfile.value = {
+      username: profileForm.value.username,
+      displayName: profileForm.value.displayName,
+      email: profileForm.value.email
+    };
+    
+    // Reset validation status
+    usernameCheckStatus.value = 'idle';
+    emailCheckStatus.value = 'idle';
+    
     await authStore.fetchUser();
     toast.success(i18n.t('profileUpdated') || 'Profile updated successfully');
   } catch (error) {
@@ -751,6 +924,26 @@ const setTheme = (newTheme) => {
 <style scoped>
 .settings-page {
   min-height: 100%;
+}
+
+.validation-message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.validation-message.checking {
+  color: var(--el-color-info);
+}
+
+.validation-message.success {
+  color: var(--el-color-success);
+}
+
+.validation-message.error {
+  color: var(--el-color-danger);
 }
 
 .page-header {

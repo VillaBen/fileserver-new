@@ -92,6 +92,8 @@ export const captchaAPI = {
 };
 
 export const userAPI = {
+  checkUsername: (username) => apiClient.get('/user/check-username', { params: { username } }),
+  checkEmail: (email) => apiClient.get('/user/check-email', { params: { email } }),
   getProfile: () => apiClient.get('/user/profile'),
   updateProfile: (data) => apiClient.put('/user/profile', data),
   getStorage: () => apiClient.get('/user/storage'),

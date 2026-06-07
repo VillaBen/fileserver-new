@@ -9,6 +9,87 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
 /**
+ * 检查用户名是否可用
+ */
+const checkUsername = async (req, res) => {
+  try {
+    const { username } = req.query;
+    const accountId = req.user?.id;
+
+    if (!username) {
+      return res.apiError('用户名不能为空', 'VALIDATION_ERROR');
+    }
+
+    // 查找是否有其他用户使用这个用户名
+    const query = accountId 
+      ? 'SELECT id FROM accounts WHERE username = ? AND id != ?'
+      : 'SELECT id FROM accounts WHERE username = ?';
+    const params = accountId ? [username, accountId] : [username];
+    
+    const existingUser = await db.asyncGet(query, params);
+
+    res.apiSuccess({
+      available: !existingUser,
+      username: username
+    });
+  } catch (error) {
+    console.error('检查用户名错误:', error);
+    res.apiError('检查失败', 'CHECK_USERNAME_ERROR');
+  }
+};
+
+/**
+ * 检查邮箱是否可用
+ */
+const checkEmail = async (req, res) => {
+  try {
+    const { email } = req.query;
+    const accountId = req.user?.id;
+
+    if (!email) {
+      return res.apiError('邮箱不能为空', 'VALIDATION_ERROR');
+    }
+
+    // 邮箱格式验证
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.apiSuccess({
+        available: false,
+        valid: false,
+        email: email
+      });
+    }
+
+    // 查找是否有其他用户使用这个邮箱
+    const allAccounts = await db.asyncAll('SELECT id, email FROM accounts WHERE email IS NOT NULL');
+    let existingUser = null;
+    
+    for (const account of allAccounts) {
+      try {
+        const decryptedEmail = decrypt(account.email);
+        if (decryptedEmail === email) {
+          if (!accountId || account.id !== accountId) {
+            existingUser = account;
+            break;
+          }
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+
+    res.apiSuccess({
+      available: !existingUser,
+      valid: true,
+      email: email
+    });
+  } catch (error) {
+    console.error('检查邮箱错误:', error);
+    res.apiError('检查失败', 'CHECK_EMAIL_ERROR');
+  }
+};
+
+/**
  * 获取用户资料
  */
 const getProfile = async (req, res) => {
@@ -102,22 +183,26 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const accountId = req.user.id;
-    const { language, trashAutoDeleteEnabled, trashAutoDeleteDays, displayName } = req.body;
+    const { language, trashAutoDeleteEnabled, trashAutoDeleteDays, displayName, username, email } = req.body;
 
-    const updates = {};
+    // 更新用户配置表更新
+    const profileUpdates = {};
     if (language !== undefined) {
-      updates.language = language;
+      profileUpdates.language = language;
     }
     if (trashAutoDeleteEnabled !== undefined) {
-      updates.trash_auto_delete_enabled = trashAutoDeleteEnabled ? 1 : 0;
+      profileUpdates.trash_auto_delete_enabled = trashAutoDeleteEnabled ? 1 : 0;
     }
     if (trashAutoDeleteDays !== undefined) {
-      updates.trash_auto_delete_days = trashAutoDeleteDays;
+      profileUpdates.trash_auto_delete_days = trashAutoDeleteDays;
+    }
+    if (displayName !== undefined) {
+      profileUpdates.display_name = displayName;
     }
 
-    if (Object.keys(updates).length > 0) {
-      const fields = Object.keys(updates).map(key => `${key} = ?`).join(', ');
-      const values = Object.values(updates);
+    if (Object.keys(profileUpdates).length > 0) {
+      const fields = Object.keys(profileUpdates).map(key => `${key} = ?`).join(', ');
+      const values = Object.values(profileUpdates);
       values.push(accountId);
 
       await db.asyncRun(
@@ -126,10 +211,68 @@ const updateProfile = async (req, res) => {
       );
     }
 
+    // 更新账户表（用户名和邮箱）
+    const accountUpdates = {};
+    if (username !== undefined) {
+      // 检查用户名是否被其他用户占用
+      const existingUser = await db.asyncGet(
+        'SELECT id FROM accounts WHERE username = ? AND id != ?',
+        [username, accountId]
+      );
+      if (existingUser) {
+        return res.apiError('用户名已被使用', 'USERNAME_EXISTS');
+      }
+      accountUpdates.username = username;
+    }
+    if (email !== undefined) {
+      if (email === '') {
+        accountUpdates.email = null;
+      } else {
+          // 邮箱格式验证
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(email)) {
+            return res.apiError('邮箱格式不正确', 'INVALID_EMAIL');
+          }
+          // 检查邮箱是否被其他用户占用
+          const allAccounts = await db.asyncAll('SELECT id, email FROM accounts WHERE email IS NOT NULL');
+          let existingEmail = null;
+          for (const account of allAccounts) {
+            try {
+              const decryptedEmail = decrypt(account.email);
+              if (decryptedEmail === email && account.id !== accountId) {
+                existingEmail = account;
+                break;
+              }
+            } catch (e) {
+              continue;
+            }
+          }
+          if (existingEmail) {
+            return res.apiError('邮箱已被使用', 'EMAIL_EXISTS');
+          }
+          accountUpdates.email = encrypt(email);
+        }
+    }
+
+    if (Object.keys(accountUpdates).length > 0) {
+      const fields = Object.keys(accountUpdates).map(key => `${key} = ?`).join(', ');
+      const values = Object.values(accountUpdates);
+      values.push(accountId);
+
+      await db.asyncRun(
+        `UPDATE accounts SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        values
+      );
+    }
+
     // 记录审计日志
+    const auditDetails = { ...profileUpdates };
+    if (accountUpdates.username) auditDetails.username = accountUpdates.username;
+    if (accountUpdates.email = email) auditDetails.emailChanged = true;
+    
     await db.asyncRun(
       'INSERT INTO audit_logs (account_id, action, ip_address, details) VALUES (?, ?, ?, ?)',
-      [accountId, 'update_profile', req.ip, JSON.stringify(updates)]
+      [accountId, 'update_profile', req.ip, JSON.stringify(auditDetails)]
     );
 
     res.apiSuccess(null, '资料更新成功');
@@ -401,6 +544,8 @@ const getAvatarFile = async (req, res) => {
 };
 
 module.exports = {
+  checkUsername,
+  checkEmail,
   getProfile,
   updateProfile,
   getStorageInfo,
