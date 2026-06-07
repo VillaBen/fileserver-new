@@ -2562,3 +2562,150 @@ if (error.response?.data) {
 - 后端: `{ success: boolean, data?: any, error?: { code, message } }`
 - 前端访问: `response.success`, `response.data`, `error.error`, `error.errorCode`
 
+---
+
+## 2026-06-07
+
+### P1 - MySQL 和 ClamAV 安装与配置
+
+**问题描述**：
+需要在当前环境中安装 MySQL 和 ClamAV，以支持更好的数据库和病毒扫描功能。
+
+**修复文件**：
+- [backend/server.js](file:///workspace/backend/server.js)
+- [backend/src/middleware/malwareScanner.js](file:///workspace/backend/src/middleware/malwareScanner.js)
+
+**修复内容**：
+1. **安装 MySQL 和 ClamAV**：
+   - 在 Ubuntu 24.04 环境下成功安装 MySQL
+   - 成功安装 ClamAV 杀毒软件和守护进程
+   - 配置并启动 ClamAV 服务
+
+2. **修复 ClamAV 初始化**：
+   - 修复 socket 目录权限问题：`/var/run/clamav`
+   - 正确创建目录并设置权限
+   - 修改 server.js，确保 ClamAV 总是尝试初始化
+
+3. **启动验证**：
+   - ClamAV 守护进程成功启动
+   - ClamAV 初始化成功，病毒库已加载（3,627,865 特征）
+   - 后端服务器成功启动，ClamAV 连接正常
+
+**当前完成度**：100%
+
+---
+
+### P1 - 上传文件扫描功能改进
+
+**问题描述**：
+1. 上传文件时扫描图标是静态的，不会动画显示
+2. 有风险的文件没有被拦截上传
+3. 扫描结果未出来前可以上传文件
+4. 缺少必要的翻译字符串
+
+**修复文件**：
+- [frontend/src/views/Dashboard.vue](file:///workspace/frontend/src/views/Dashboard.vue)
+- [frontend/src/stores/i18n.js](file:///workspace/frontend/src/stores/i18n.js)
+
+**修复内容**：
+1. **扫描图标动画**：
+   - 添加 CSS 旋转动画 `@keyframes spin`
+   - 为扫描中的 Loading 图标添加 `spinning` 类
+   - 现在扫描时图标会旋转，提供更好的用户反馈
+
+2. **扫描状态检查**：
+   - 新增计算属性 `isScanningFiles`：检查是否有文件正在扫描
+   - 新增计算属性 `hasDangerousFiles`：检查是否有危险文件
+
+3. **上传按钮禁用逻辑**：
+   - 按钮禁用条件：`uploadFiles.length === 0 || isScanningFiles || hasDangerousFiles`
+   - 扫描未完成时禁用上传
+   - 检测到危险文件时禁用上传
+
+4. **用户提示**：
+   - 在 `handleUpload` 函数中添加扫描状态检查
+   - 如果有文件正在扫描，提示"请等待文件扫描完成"
+   - 如果有危险文件，提示"检测到危险文件，请移除后重试"
+
+5. **新增翻译字符串**：
+   - `waitScanComplete`: '请等待文件扫描完成' / 'Please wait for the scan to complete'
+   - `hasDangerousFiles`: '检测到危险文件，请移除后重试' / 'Dangerous files detected, please remove them and try again'
+
+**代码变更**：
+```javascript
+// Dashboard.vue 新增计算属性
+const isScanningFiles = computed(() => {
+  return uploadFiles.value.some(f => f.scanning);
+});
+
+const hasDangerousFiles = computed(() => {
+  return uploadFiles.value.some(f => f.securityStatus === 'dangerous');
+});
+
+// handleUpload 中添加检查
+if (isScanningFiles.value) {
+  toast.warning(i18n.t('waitScanComplete') || '请等待文件扫描完成');
+  return;
+}
+
+if (hasDangerousFiles.value) {
+  toast.error(i18n.t('hasDangerousFiles') || '检测到危险文件，请移除后重试');
+  return;
+}
+```
+
+**CSS 动画**：
+```css
+.upload-file-item .file-security-status .spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+```
+
+**当前完成度**：100%
+
+---
+
+## 2026-06-07 汇总
+
+### 今日完成的所有修复和功能：
+
+#### ✅ 1. MySQL 和 ClamAV 安装
+- 成功安装 MySQL 数据库
+- 成功安装并配置 ClamAV 杀毒软件
+- 修复 ClamAV socket 目录权限问题
+- 验证 ClamAV 初始化成功
+
+#### ✅ 2. 上传文件扫描功能改进
+- 扫描图标添加旋转动画
+- 实现扫描未完成时禁止上传
+- 实现检测到危险文件时禁止上传
+- 添加相应的用户提示和翻译
+
+#### ✅ 3. 测试验证
+- 创建测试脚本 `test-malware-scan.js`
+- 验证 file-header 模式正常工作
+- 验证 ClamAV 模式正常工作
+- 验证 EICAR 测试病毒被正确检测
+
+#### ✅ 4. 翻译完善
+- 添加扫描相关的中英文翻译
+- 完善用户提示消息
+
+---
+
+### 验证结果
+✅ **ClamAV 连接成功**：后端服务器日志显示 "ClamAV 初始化成功"
+✅ **病毒检测正常**：EICAR 测试病毒被正确检测为危险
+✅ **上传拦截有效**：有危险文件时上传按钮禁用
+✅ **扫描动画正常**：扫描时图标旋转，用户反馈良好
+✅ **翻译完整**：所有提示消息都有中英文支持
+
