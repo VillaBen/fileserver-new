@@ -2877,3 +2877,51 @@ if (hasDangerousFiles.value) {
 ✅ **扫描动画正常**：扫描时图标旋转，用户反馈良好
 ✅ **翻译完整**：所有提示消息都有中英文支持
 
+---
+
+### P2 - 服务连接测试与一键启动脚本创建
+
+**问题描述**：
+需要测试 MySQL 和 ClamAV 的连接状态，并创建一键启动前后端服务器的脚本。
+
+**修复文件**：
+- [start-app.sh](file:///workspace/start-app.sh) (新建)
+- [start-app.ps1](file:///workspace/start-app.ps1) (新建)
+
+**修复内容**：
+
+1. **服务连接测试**：
+   - MySQL 连接测试：✅ 通过 socket `/tmp/mysql.sock` 连接成功
+   - ClamAV 连接测试：✅ 守护进程运行正常，socket 位于 `/tmp/clamd.sock`
+   - 病毒库状态：main.cvd (89MB)、daily.cvd (23MB)、bytecode.cvd 已更新
+
+2. **Linux 一键启动脚本** (`start-app.sh`)：
+   - 仅启动前后端服务（不包含 MySQL/ClamAV）
+   - 检查 MySQL 和 ClamAV 前置服务状态
+   - 自动安装依赖（如果 node_modules 不存在）
+   - 初始化数据库
+   - 自动停止旧进程，避免端口冲突
+   - 保存 PID 到文件便于管理
+   - 完整的日志输出
+
+3. **Windows PowerShell 启动脚本** (`start-app.ps1`)：
+   - 与 Linux 脚本功能对等
+   - 使用 PowerShell Start-Job 后台启动
+   - 完整的彩色输出和中文提示
+   - 完善的错误处理
+
+**使用方法**：
+```bash
+# Linux
+./start-app.sh
+
+# Windows
+.\start-app.ps1
+```
+
+**注意事项**：
+- 使用前需确保 MySQL 和 ClamAV 已启动
+- 参考：`./start-mysql.sh` 和 `./start-clamav.sh`
+
+**当前完成度**：100%
+
