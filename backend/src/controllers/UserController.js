@@ -4,6 +4,7 @@
 
 const { db } = require('../config/database.adapter');
 const { encrypt, decrypt, hashPassword, verifyPassword } = require('../utils/encryption');
+const { validateUsername, validateEmail, validateDisplayName } = require('../utils/validators');
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
@@ -198,7 +199,11 @@ const updateProfile = async (req, res) => {
       profileUpdates.trash_auto_delete_days = trashAutoDeleteDays;
     }
     if (displayName !== undefined) {
-      profileUpdates.display_name = displayName;
+      const displayNameValidation = validateDisplayName(displayName);
+      if (!displayNameValidation.valid) {
+        return res.apiError(displayNameValidation.errors[0], 'VALIDATION_ERROR');
+      }
+      profileUpdates.display_name = displayNameValidation.clean;
     }
 
     if (Object.keys(profileUpdates).length > 0) {
@@ -215,32 +220,41 @@ const updateProfile = async (req, res) => {
     // 更新账户表（用户名和邮箱）
     const accountUpdates = {};
     if (username !== undefined) {
+      // 验证用户名
+      const usernameValidation = validateUsername(username);
+      if (!usernameValidation.valid) {
+        return res.apiError(usernameValidation.errors[0], 'VALIDATION_ERROR');
+      }
+      const cleanUsername = usernameValidation.clean;
+      
       // 检查用户名是否被其他用户占用
       const existingUser = await db.asyncGet(
         'SELECT id FROM accounts WHERE username = ? AND id != ?',
-        [username, accountId]
+        [cleanUsername, accountId]
       );
       if (existingUser) {
         return res.apiError('用户名已被使用', 'USERNAME_EXISTS');
       }
-      accountUpdates.username = username;
+      accountUpdates.username = cleanUsername;
     }
     if (email !== undefined) {
       if (email === '') {
         accountUpdates.email = null;
       } else {
-          // 邮箱格式验证
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (!emailRegex.test(email)) {
-            return res.apiError('邮箱格式不正确', 'INVALID_EMAIL');
+          // 验证邮箱
+          const emailValidation = validateEmail(email, false);
+          if (!emailValidation.valid) {
+            return res.apiError(emailValidation.errors[0], 'VALIDATION_ERROR');
           }
+          const cleanEmail = emailValidation.clean;
+          
           // 检查邮箱是否被其他用户占用
           const allAccounts = await db.asyncAll('SELECT id, email FROM accounts WHERE email IS NOT NULL');
           let existingEmail = null;
           for (const account of allAccounts) {
             try {
               const decryptedEmail = decrypt(account.email);
-              if (decryptedEmail === email && account.id !== accountId) {
+              if (decryptedEmail === cleanEmail && account.id !== accountId) {
                 existingEmail = account;
                 break;
               }
@@ -251,7 +265,7 @@ const updateProfile = async (req, res) => {
           if (existingEmail) {
             return res.apiError('邮箱已被使用', 'EMAIL_EXISTS');
           }
-          accountUpdates.email = encrypt(email);
+          accountUpdates.email = encrypt(cleanEmail);
         }
     }
 

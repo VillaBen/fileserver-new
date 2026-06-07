@@ -11,17 +11,35 @@ const { generateToken } = require('../utils/jwt');
 const { encrypt, decrypt } = require('../utils/encryption');
 const { requireAuth } = require('../middleware/auth');
 const { sendEmailCode, sendPasswordReset } = require('../utils/email');
+const { validateUsername, validateEmail, validatePassword } = require('../utils/validators');
 
 const router = express.Router();
 
 // 注册
 router.post('/register', async (req, res) => {
   try {
-    const { username, password, email, captchaId, captchaCode } = req.body;
+    const { username, password, email, captchaId, captchaCode, confirmPassword } = req.body;
 
-    if (!username || !password) {
-      return res.apiError('Username and password cannot be empty', 'VALIDATION_ERROR');
+    // 验证用户名
+    const usernameValidation = validateUsername(username);
+    if (!usernameValidation.valid) {
+      return res.apiError(usernameValidation.errors[0], 'VALIDATION_ERROR');
     }
+    
+    // 验证密码
+    const passwordValidation = validatePassword(password, confirmPassword);
+    if (!passwordValidation.valid) {
+      return res.apiError(passwordValidation.errors[0], 'VALIDATION_ERROR');
+    }
+    
+    // 验证邮箱（可选）
+    const emailValidation = validateEmail(email, false);
+    if (email && !emailValidation.valid) {
+      return res.apiError(emailValidation.errors[0], 'VALIDATION_ERROR');
+    }
+
+    const cleanUsername = usernameValidation.clean;
+    const cleanEmail = emailValidation.clean;
 
     // 检查验证码（只有当验证码不为空时才验证）
     if (captchaId && captchaCode && captchaCode.trim()) {
@@ -46,15 +64,30 @@ router.post('/register', async (req, res) => {
     // 检查用户名是否存在
     const existingUser = await db.asyncGet(
       'SELECT id FROM accounts WHERE username = ?',
-      [username]
+      [cleanUsername]
     );
 
     if (existingUser) {
       return res.apiError('Username already exists', 'USERNAME_EXISTS');
     }
 
+    // 如果提供邮箱，检查邮箱是否已使用
+    if (cleanEmail) {
+      const allAccounts = await db.asyncAll('SELECT id, email FROM accounts WHERE email IS NOT NULL');
+      for (const account of allAccounts) {
+        try {
+          const decryptedEmail = decrypt(account.email);
+          if (decryptedEmail === cleanEmail) {
+            return res.apiError('Email already exists', 'EMAIL_EXISTS');
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+    }
+
     // 加密邮箱（如果提供）
-    const encryptedEmail = email ? encrypt(email) : null;
+    const encryptedEmail = cleanEmail ? encrypt(cleanEmail) : null;
 
     // 哈希密码
     const passwordHash = await bcrypt.hash(password, 10);
@@ -62,7 +95,7 @@ router.post('/register', async (req, res) => {
     // 创建用户
     const result = await db.asyncRun(
       'INSERT INTO accounts (username, email, password_hash) VALUES (?, ?, ?)',
-      [username, encryptedEmail, passwordHash]
+      [cleanUsername, encryptedEmail, passwordHash]
     );
 
     const userId = result.lastID;
