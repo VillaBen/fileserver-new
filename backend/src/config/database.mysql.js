@@ -14,6 +14,7 @@ const MYSQL_CONFIG = {
   user: process.env.MYSQL_USER || 'root',
   password: process.env.MYSQL_PASSWORD || '',
   database: process.env.MYSQL_DATABASE || 'fileserver',
+  socketPath: process.env.MYSQL_SOCKET || undefined,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,

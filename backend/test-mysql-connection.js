@@ -14,10 +14,12 @@ async function testConnection() {
     user: process.env.MYSQL_USER || 'root',
     password: process.env.MYSQL_PASSWORD || '',
     database: process.env.MYSQL_DATABASE || 'fileserver',
-    connectTimeout: 5000
+    socketPath: '/tmp/mysql.sock', // 使用 socket 连接
+    connectTimeout: 10000
   };
   
   console.log('📋 配置:');
+  console.log(`   Socket: ${config.socketPath}`);
   console.log(`   Host: ${config.host}`);
   console.log(`   Port: ${config.port}`);
   console.log(`   User: ${config.user}`);
@@ -31,15 +33,15 @@ async function testConnection() {
     const [rows] = await connection.execute('SELECT VERSION() as version');
     console.log(`📊 MySQL 版本: ${rows[0].version}`);
     
+    // 查看数据库
+    const [databases] = await connection.execute('SHOW DATABASES');
+    console.log(`📚 数据库列表:`);
+    databases.forEach(db => console.log(`   - ${db.Database}`));
+    
     await connection.end();
     return true;
   } catch (error) {
     console.error('❌ MySQL 连接失败:', error.message);
-    console.error('💡 提示:');
-    console.error('   1. 确保 MySQL 服务正在运行');
-    console.error('   2. 检查 .env 中的配置是否正确');
-    console.error('   3. 确认数据库 "fileserver" 是否已创建');
-    console.error('   4. 当前环境可以继续使用 SQLite (默认)');
     return false;
   }
 }
