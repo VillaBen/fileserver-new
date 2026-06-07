@@ -253,7 +253,7 @@
           <div class="file-security-status">
             <el-tooltip :content="file.securityStatusText || 'Scanning...'" placement="top">
               <el-icon :size="18">
-                <Loading v-if="file.scanning" />
+                <Loading v-if="file.scanning" class="spinning" />
                 <CircleCheck v-else-if="file.securityStatus === 'safe'" class="safe" />
                 <Warning v-else-if="file.securityStatus === 'warning'" class="warning" />
                 <CircleClose v-else-if="file.securityStatus === 'dangerous'" class="danger" />
@@ -275,9 +275,9 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="handleCloseUploadDialog">{{ i18n.t('cancel') }}</el-button>
-          <el-button type="primary" @click="handleUpload" :loading="uploading" :disabled="uploadFiles.length === 0">
-            {{ i18n.t('confirm') }}
-          </el-button>
+          <el-button type="primary" @click="handleUpload" :loading="uploading" :disabled="uploadFiles.length === 0 || isScanningFiles || hasDangerousFiles">
+          {{ i18n.t('confirm') }}
+        </el-button>
         </div>
       </template>
     </el-dialog>
@@ -540,6 +540,16 @@ const allFiles = computed(() => {
   return [...folders, ...files];
 });
 
+// 计算是否有文件正在扫描
+const isScanningFiles = computed(() => {
+  return uploadFiles.value.some(f => f.scanning);
+});
+
+// 计算是否有危险文件
+const hasDangerousFiles = computed(() => {
+  return uploadFiles.value.some(f => f.securityStatus === 'dangerous');
+});
+
 const stats = computed(() => {
   return {
     files: filesStore.stats.fileCount,
@@ -672,6 +682,18 @@ const handleFileDoubleClick = (file) => {
 const handleUpload = async () => {
   if (uploadFiles.value.length === 0) {
     toast.warning(i18n.t('pleaseSelectFiles') || 'Please select files');
+    return;
+  }
+  
+  // 检查是否有文件还在扫描
+  if (isScanningFiles.value) {
+    toast.warning(i18n.t('waitScanComplete') || '请等待文件扫描完成');
+    return;
+  }
+  
+  // 检查是否有危险文件
+  if (hasDangerousFiles.value) {
+    toast.error(i18n.t('hasDangerousFiles') || '检测到危险文件，请移除后重试');
     return;
   }
   
@@ -1282,6 +1304,19 @@ const copyShareLink = () => {
 
 .upload-file-item .file-security-status .unknown {
   color: var(--el-text-color-placeholder);
+}
+
+.upload-file-item .file-security-status .spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .upload-file-item .file-actions {
