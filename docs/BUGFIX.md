@@ -5,6 +5,68 @@
 
 ---
 
+## 2026-06-07
+
+### P0 - 完整的用户信息验证机制实现
+
+**问题描述**：
+1. 用户注册时没有完整的用户名、邮箱、密码验证机制
+2. 用户修改资料时没有验证机制
+3. 用户名和邮箱缺少实时可用性检查
+4. 密码没有强度评估
+
+**问题分析**：
+- 后端缺少统一的验证工具模块
+- 前端验证逻辑不完善
+- 缺少对特殊字符、长度、格式的验证
+
+**修复文件**：
+- [validators.js](file:///workspace/backend/src/utils/validators.js) (新建)
+- [auth.js](file:///workspace/backend/src/routes/auth.js)
+- [UserController.js](file:///workspace/backend/src/controllers/UserController.js)
+- [Settings.vue](file:///workspace/frontend/src/views/Settings.vue)
+
+**修复内容**：
+1. 新建完整的验证工具模块 `validators.js`：
+   - `validateUsername()`: 用户名验证（3-20字符，字母数字下划线连字符，敏感词过滤）
+   - `validateEmail()`: 邮箱格式验证
+   - `validatePassword()`: 密码强度验证（8-128字符，需包含大小写字母和数字）
+   - `validateFilename()`: 文件名安全检查
+   - `validateFoldername()`: 文件夹名安全检查
+   - `validateDisplayName()`: 显示名称验证
+2. 在注册流程中使用新的验证工具
+3. 在更新资料流程中使用新的验证工具
+4. 增强前端验证逻辑
+
+**当前完成度**：100%
+
+---
+
+### P1 - MySQL 服务启动脚本创建
+
+**问题描述**：
+需要一个简单的MySQL服务启动脚本来支持开发和测试。
+
+**修复文件**：
+- [start-mysql.sh](file:///workspace/start-mysql.sh)
+- [start-clamav.sh](file:///workspace/start-clamav.sh) (修复)
+- [start-all.sh](file:///workspace/start-all.sh) (新建)
+- [stop-all.sh](file:///workspace/stop-all.sh) (新建)
+
+**修复内容**：
+1. 修复 ClamAV 配置文件中的选项名称（ScanMaxFileSize → MaxFileSize）
+2. 创建完整的服务启动脚本 `start-all.sh`：
+   - 支持启动 MySQL（可选）
+   - 支持启动 ClamAV（可选）
+   - 自动安装依赖
+   - 初始化数据库
+3. 创建服务停止脚本 `stop-all.sh`
+4. 启动服务时保存 PID 信息方便管理
+
+**当前完成度**：100%
+
+---
+
 ## 如何记录
 
 - 日期格式: `YYYY-MM-DD`

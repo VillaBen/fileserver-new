@@ -13,11 +13,11 @@ touch /var/lib/clamav/daily.cvd
 touch /var/lib/clamav/main.cvd
 chmod 644 /var/lib/clamav/*
 
-# 设置配置
+# 设置配置 - 使用正确的配置选项
 cat > /etc/clamav/clamd.conf << EOF
 LocalSocket /tmp/clamd.sock
 User $(whoami)
-ScanMaxFileSize 100M
+MaxFileSize 100M
 MaxScanSize 100M
 StreamMaxLength 100M
 LogFile /tmp/clamav.log
@@ -35,8 +35,8 @@ CLAMAV_PID=$!
 echo $CLAMAV_PID > /tmp/clamav.pid
 
 # 等待启动
-echo "⏳ 等待 ClamAV 启动 (10秒)..."
-sleep 10
+echo "⏳ 等待 ClamAV 启动 (15秒)..."
+sleep 15
 
 # 检查是否启动成功
 if kill -0 $CLAMAV_PID 2>/dev/null; then
@@ -48,12 +48,12 @@ if kill -0 $CLAMAV_PID 2>/dev/null; then
     echo ""
     echo "💡 检查 socket..."
     
-    for i in {1..10}; do
+    for i in {1..15}; do
         if [ -S /tmp/clamd.sock ]; then
             echo "✅ ClamAV socket 已就绪"
             break
         fi
-        echo "等待 socket 创建... ($i/10)"
+        echo "等待 socket 创建... ($i/15)"
         sleep 2
     done
     
@@ -68,5 +68,6 @@ if kill -0 $CLAMAV_PID 2>/dev/null; then
 else
     echo "❌ ClamAV 启动失败"
     echo "📝 查看日志: cat /tmp/clamav.log"
+    cat /tmp/clamav.log
     exit 1
 fi
