@@ -165,6 +165,7 @@ const getProfile = async (req, res) => {
       twoFactorEnabled: account.two_factor_enabled === 1 || profile.two_factor_enabled === 1,
       trashAutoDeleteEnabled: profile.trash_auto_delete_enabled === 1,
       trashAutoDeleteDays: profile.trash_auto_delete_days,
+      displayName: profile.display_name || account.username,
       createdAt: account.created_at
     };
     
@@ -268,7 +269,7 @@ const updateProfile = async (req, res) => {
     // 记录审计日志
     const auditDetails = { ...profileUpdates };
     if (accountUpdates.username) auditDetails.username = accountUpdates.username;
-    if (accountUpdates.email = email) auditDetails.emailChanged = true;
+    if (accountUpdates.email) auditDetails.emailChanged = true;
     
     await db.asyncRun(
       'INSERT INTO audit_logs (account_id, action, ip_address, details) VALUES (?, ?, ?, ?)',
