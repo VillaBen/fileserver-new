@@ -152,7 +152,7 @@ if (Test-Path $FrontendDir) {
     $FrontendJob = Start-Job -ScriptBlock {
         param($WorkingDir)
         Set-Location $WorkingDir
-        & npm run dev
+        & npm run dev -- --host
     } -ArgumentList $FrontendDir
 
     # 保存进程ID

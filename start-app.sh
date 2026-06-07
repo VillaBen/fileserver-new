@@ -113,7 +113,7 @@ if [ -d "$PROJECT_ROOT/frontend" ]; then
     fi
 
     echo "  🚀  启动前端开发服务器..."
-    nohup npm run dev 2>&1 > "$PROJECT_ROOT/frontend.log" &
+    nohup npm run dev -- --host 2>&1 > "$PROJECT_ROOT/frontend.log" &
     FRONTEND_PID=$!
     echo "  ✅ 前端已启动 (PID: $FRONTEND_PID)"
     echo "  🌐  前端地址: http://localhost:5173"
