@@ -93,6 +93,60 @@ ClamAV 启动脚本缺少病毒库更新功能，导致病毒库无法及时更�
 
 ---
 
+### P2 - Windows PowerShell 启动脚本创建
+
+**问题描述**：
+项目只提供了 Linux Bash 脚本，没有为 Windows 用户提供 PowerShell 脚本，导致 Windows 用户无法方便地启动 MySQL、ClamAV 和应用服务。
+
+**修复文件**：
+- [start-mysql.ps1](file:///workspace/start-mysql.ps1) (新建)
+- [start-clamav.ps1](file:///workspace/start-clamav.ps1) (新建)
+- [start-all.ps1](file:///workspace/start-all.ps1) (新建)
+- [stop-all.ps1](file:///workspace/stop-all.ps1) (新建)
+
+**修复内容**：
+1. **start-mysql.ps1** - Windows MySQL 启动脚本：
+   - 自动检测系统已安装的 MySQL（支持标准安装、XAMPP、WAMP 等）
+   - 检测并启动 MySQL Windows 服务
+   - 支持使用默认 SQLite 数据库的降级方案
+   - 创建必要的数据目录
+   - 完整的 i18n 友好提示
+
+2. **start-clamav.ps1** - Windows ClamAV 启动脚本：
+   - 自动检测 ClamAV 安装（标准路径、Program Files 等）
+   - 集成 freshclam 病毒库更新（如果可用）
+   - 支持文件头检测模式的降级方案
+   - 创建 ClamAV 数据和临时目录
+   - 完整的配置和启动流程
+
+3. **start-all.ps1** - Windows 综合启动脚本：
+   - 一站式启动 MySQL、ClamAV、后端和前端服务
+   - 使用 PowerShell Start-Job 在后台运行后端和前端
+   - 自动安装依赖（如果 node_modules 不存在）
+   - 初始化数据库
+   - 保存 Job ID 便于后续管理
+   - 显示完整的服务状态和访问地址
+   - 支持查看服务日志的提示
+
+4. **stop-all.ps1** - Windows 服务停止脚本：
+   - 使用保存的 Job ID 停止后台运行的服务
+   - 通过端口检测并停止相关 Node 进程
+   - 清理临时文件
+   - 检查端口释放状态
+   - 提供重新启动的提示
+
+**脚本特点**：
+- ✅ Windows PowerShell 5.1+ 兼容
+- ✅ 友好的彩色输出和中文提示
+- ✅ 完善的错误处理和降级方案
+- ✅ 与现有 Bash 脚本功能对等
+- ✅ 支持 XAMPP/WAMP/独立 MySQL 多种环境
+- ✅ 完整的服务生命周期管理（启动/停止/查看日志）
+
+**当前完成度**：100%
+
+---
+
 ### P3 - 代码完整性全面检查
 
 **问题描述**：
