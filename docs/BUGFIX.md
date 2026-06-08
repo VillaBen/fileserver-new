@@ -5,6 +5,71 @@
 
 ---
 
+## 2026-06-08
+
+### P0 - 个人资料页邮箱验证400错误修复
+
+**问题描述**：
+1. 用户在个人资料页输入中文邮箱时出现 Axios 400 错误
+2. 虽然正常情况下邮箱不可能包含中文，但错误处理不够友好
+
+**问题分析**：
+1. **根本原因**：GET请求通过URL传递参数，中文或特殊字符在URL编码时出现问题
+2. **HTTP方法与参数传递方式不匹配**：
+   - GET方法通常通过URL的query参数传递数据
+   - POST方法通过请求体传递数据，更适合传递中文和特殊字符
+3. **影响范围**：`check-username`和`check-email`接口使用了GET方法接收用户输入
+
+**修复文件**：
+- [user.js (backend)](file:///workspace/backend/src/routes/user.js)
+- [UserController.js (backend)](file:///workspace/backend/src/controllers/UserController.js)
+- [index.js (frontend API)](file:///workspace/frontend/src/api/index.js)
+
+**修复内容**：
+1. **后端路由修改**：
+   - `check-username` 和 `check-email` 接口从 GET 改为 POST
+   - 控制器参数获取从 `req.query` 改为 `req.body`
+
+2. **前端API调用修改**：
+   - API调用从 `apiClient.get()` 改为 `apiClient.post()`
+   - 参数传递方式从 `{ params: { username } }` 改为 `{ username }`
+
+**当前完成度**：100%
+
+---
+
+### P1 - 文件名和文件夹名安全验证完善
+
+**问题描述**：
+验证函数已定义但未在关键接口中使用，可能存在路径遍历等安全隐患。
+
+**修复文件**：
+- [files.js (backend)](file:///workspace/backend/src/routes/files.js)
+
+**修复内容**：
+1. **创建文件夹**：添加 `validateFoldername()` 验证
+2. **重命名文件**：根据文件类型使用相应验证函数
+3. **上传文件**：添加 `validateFilename()` 验证，验证失败的文件被跳过
+
+**验证规则**：
+- **允许**：中文、英文字母、数字、空格、下划线、连字符
+- **禁止**：`<>:"/\|?*` 以及以点开头的文件名
+- **长度限制**：用户名(3-20)、文件名(≤255)、文件夹名(≤100)、显示名称(≤50)
+
+**当前完成度**：100%
+
+---
+
+### P2 - 所有GET接口URL编码问题全面检查
+
+**检查结果**：
+- ✅ 已修复3个接口（用户名/邮箱检查、文件搜索）
+- ✅ 确认其他GET接口安全（仅使用ID/布尔值等参数）
+
+**当前完成度**：100%
+
+---
+
 ## 2026-06-07
 
 ### P0 - 完整的用户信息验证机制实现
