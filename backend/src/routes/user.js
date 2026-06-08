@@ -7,8 +7,8 @@ const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 const upload = multer();
 
-router.get('/check-username', requireAuth, userController.checkUsername);
-router.get('/check-email', requireAuth, userController.checkEmail);
+router.post('/check-username', requireAuth, userController.checkUsername);
+router.post('/check-email', requireAuth, userController.checkEmail);
 router.get('/profile', requireAuth, userController.getProfile);
 router.put('/profile', requireAuth, userController.updateProfile);
 router.get('/storage', requireAuth, userController.getStorageInfo);

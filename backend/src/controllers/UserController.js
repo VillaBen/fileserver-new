@@ -14,8 +14,8 @@ const { v4: uuidv4 } = require('uuid');
  */
 const checkUsername = async (req, res) => {
   try {
-    console.log('[checkUsername] 收到请求，查询参数:', req.query);
-    const { username } = req.query;
+    console.log('[checkUsername] 收到请求，请求体:', req.body);
+    const { username } = req.body;
     const accountId = req.user?.id;
 
     if (!username) {
@@ -72,8 +72,8 @@ const checkUsername = async (req, res) => {
  */
 const checkEmail = async (req, res) => {
   try {
-    console.log('[checkEmail] 收到请求，查询参数:', req.query);
-    const { email } = req.query;
+    console.log('[checkEmail] 收到请求，请求体:', req.body);
+    const { email } = req.body;
     const accountId = req.user?.id;
 
     if (!email) {
