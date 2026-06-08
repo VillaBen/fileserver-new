@@ -12,12 +12,16 @@ const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
 // 文件名安全字符：白名单 + 黑名单混合模式
-// 白名单：允许中文、英文、数字、常用标点符号
-// 黑名单：禁止emoji、控制字符、路径特殊字符等
+// 白名单：允许中文、英文、数字、英文标点符号
+// 黑名单：禁止emoji、控制字符、路径特殊字符、中文标点等
+// 只允许英文标点：空格 _ - . , ( ) [ ] { } & ' @ ! # $ % ^ + = ; ` ~
 const SAFE_FILENAME_REGEX = /^[\u4e00-\u9fffa-zA-Z0-9 _\-\.,()\[\]{}&'@!#$%^+=;`~]+$/;
 
 // 文件夹名安全字符：与文件名一致
 const SAFE_FOLDERNAME_REGEX = /^[\u4e00-\u9fffa-zA-Z0-9 _\-\.,()\[\]{}&'@!#$%^+=;`~]+$/;
+
+// 禁止的中文标点符号
+const CHINESE_PUNCTUATION_REGEX = /[（）【】《》""''、，。！？；：……—]/;
 
 /**
  * 验证用户名
@@ -218,8 +222,13 @@ function validateFilename(filename, requireExtension = true) {
     errors.push('文件名不能包含emoji、表情符号或特殊装饰字符');
   }
   
+  // 检查是否包含中文标点符号
+  if (CHINESE_PUNCTUATION_REGEX.test(trimmed)) {
+    errors.push('文件名只能使用英文标点符号（(),[],{}等），不能使用中文标点（），【】，等）');
+  }
+  
   if (!SAFE_FILENAME_REGEX.test(trimmed)) {
-    errors.push('文件名只能包含中文、英文、数字和常用标点符号（空格_-.()[]{}&\'@!#$%^+=;`~）');
+    errors.push('文件名只能包含中文、英文、数字和英文标点符号（空格_-.(),[]{}&@!#$%^+=;`~）');
   }
   
   // 检查是否以.开头（隐藏文件）
@@ -271,8 +280,13 @@ function validateFoldername(foldername) {
     errors.push('文件夹名不能包含emoji、表情符号或特殊装饰字符');
   }
   
+  // 检查是否包含中文标点符号
+  if (CHINESE_PUNCTUATION_REGEX.test(trimmed)) {
+    errors.push('文件夹名只能使用英文标点符号（(),[],{}等），不能使用中文标点（），【】，等）');
+  }
+  
   if (!SAFE_FOLDERNAME_REGEX.test(trimmed)) {
-    errors.push('文件夹名只能包含中文、英文、数字和常用标点符号（空格_-.()[]{}&\'@!#$%^+=;`~）');
+    errors.push('文件夹名只能包含中文、英文、数字和英文标点符号（空格_-.(),[]{}&@!#$%^+=;`~）');
   }
   
   if (trimmed.startsWith('.')) {
@@ -320,6 +334,8 @@ module.exports = {
   validateFilename,
   validateFoldername,
   validateDisplayName,
+  hasDisallowedCharacters,
+  CHINESE_PUNCTUATION_REGEX,
   USERNAME_REGEX,
   EMAIL_REGEX,
   PASSWORD_REGEX

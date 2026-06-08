@@ -1065,7 +1065,10 @@ const sanitizeFilename = (value) => {
   // 首先移除emoji和特殊装饰字符
   let sanitized = value.replace(/[\u{1F000}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F300}-\u{1F6FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{25A0}-\u{25FF}\u{FE00}-\u{FE0F}\u{E000}-\u{F8FF}\u{2000}-\u{200F}\u{2028}-\u{202F}\u{2060}-\u{206F}\u{FEFF}\u{FFF0}-\u{FFFF}]/gu, '');
   
-  // 然后只允许白名单字符：中文、英文、数字和常用标点
+  // 移除中文标点符号（），【】、《》""''、，。！？；：……—
+  sanitized = sanitized.replace(/[（）【】《》""''、，。！？；：……—]/g, '');
+  
+  // 然后只允许白名单字符：中文、英文、数字和英文标点
   sanitized = sanitized.replace(/[^\u4e00-\u9fffa-zA-Z0-9 _\-\.,()\[\]{}&'@!#$%^+=;`~]/g, '');
   
   return sanitized;
