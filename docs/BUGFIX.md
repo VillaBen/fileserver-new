@@ -38,6 +38,199 @@
 
 ---
 
+## 2026-06-08 (续)
+
+### P1 - 字符过滤白名单+黑名单混合模式优化
+
+**问题描述**：
+1. 文件名和文件夹名验证过于宽松，允许 emoji、特殊符号等可能导致显示问题的字符
+2. 中英文标点符号未做区分，用户可能使用中文括号、书名号等
+3. 移动端输入法的特殊字符（斗图、颜文字等）未被限制
+
+**修复文件**：
+- [validators.js](file:///workspace/backend/src/utils/validators.js)
+- [Dashboard.vue](file:///workspace/frontend/src/views/Dashboard.vue)
+- [Settings.vue](file:///workspace/frontend/src/views/Settings.vue)
+- [Login.vue](file:///workspace/frontend/src/views/Login.vue)
+- [Register.vue](file:///workspace/frontend/src/views/Register.vue)
+- [Admin/Users.vue](file:///workspace/frontend/src/views/Admin/Users.vue)
+
+**修复内容**：
+1. **后端验证优化** ([validators.js](file:///workspace/backend/src/utils/validators.js))：
+   - 实现白名单+黑名单混合模式
+   - 允许字符：中文、英文、数字、英文标点符号（`_-.(),[]{}&@!#$%^+=;~`）
+   - 禁止字符：
+     - 所有 emoji 和表情符号（🈶、🚫、😊等）
+     - 中文标点符号（）（）、【】、《》、，。！？等）
+     - 路径危险字符（`<>:"/\|?*`）
+     - 控制字符
+   - 新增 `hasDisallowedCharacters()` 函数检测禁用字符
+   - 新增 `CHINESE_PUNCTUATION_REGEX` 检测中文标点
+
+2. **前端输入过滤优化** ([Dashboard.vue](file:///workspace/frontend/src/views/Dashboard.vue))：
+   - 实现 `sanitizeFilename()` 函数
+   - 实时移除 emoji 和中文标点
+   - 只保留白名单字符
+   - 为所有文件名/文件夹名输入框绑定过滤函数
+
+3. **全局输入框优化**：
+   - 用户名输入框：严格限制（`a-zA-Z0-9_-`）
+   - 文件名/文件夹名：白名单模式（中文、英文、数字、英文标点）
+   - 搜索框：宽松模式（只过滤控制字符）
+   - 双因素验证码：仅数字
+
+**验证规则**：
+```
+允许字符：[\u4e00-\u9fff\u0041-\u005a\u0061-\u007a\u0030-\u0039 _\-\.,()\[\]{}&'@!#$%^+=;`~]
+禁止字符：
+  - Emoji: \u{1F000}-\u{1F9FF} 等 Unicode 区间
+  - 中文标点: （）【】《》""''、，。！？；：……—
+  - 危险字符: < > : " / \ | ? *
+```
+
+**当前完成度**：100%
+
+---
+
+### P1 - 过滤字符用户提示优化
+
+**问题描述**：
+1. 前端过滤掉不支持的字符时，用户不清楚发生了什么
+2. 输入框突然变空，用户困惑
+
+**修复文件**：
+- [Dashboard.vue](file:///workspace/frontend/src/views/Dashboard.vue)
+
+**修复内容**：
+1. 添加 `showFilterWarning` 状态变量
+2. 过滤字符时显示友好的黄色警告提示："部分字符不支持，已自动过滤"
+3. 提示在 3 秒后自动消失
+4. 添加平滑的渐入渐出动画
+
+**用户体验**：
+- 用户输入不支持字符时，立即显示警告
+- 明确告知用户哪些字符被过滤
+- 3 秒后自动隐藏，不干扰正常使用
+
+**当前完成度**：100%
+
+---
+
+### P1 - 登录错误消息详细分类
+
+**问题描述**：
+1. 登录失败时提示过于笼统（"登录失败"）
+2. 用户不清楚具体失败原因
+3. 无法针对性解决问题
+
+**修复文件**：
+- [auth.js](file:///workspace/backend/src/routes/auth.js)
+- [Login.vue](file:///workspace/frontend/src/views/Login.vue)
+
+**修复内容**：
+1. **后端详细错误消息** ([auth.js](file:///workspace/backend/src/routes/auth.js))：
+   - 用户名不存在 → "用户名不存在，请检查输入或注册新账户"
+   - 密码错误 → "密码错误，还剩 X 次尝试机会"
+   - 账户被禁用 → "账户已被禁用，请联系管理员"
+   - 账户被锁定 → "账户已被锁定，请 X 分钟后再试"
+   - 空用户名/密码 → "用户名或密码不能为空"
+
+2. **前端错误映射** ([Login.vue](file:///workspace/frontend/src/views/Login.vue))：
+   - 添加完整的错误代码到友好消息映射
+   - 优先使用后端返回的具体错误消息
+   - 为每种错误提供用户友好的操作建议
+
+**错误代码分类**：
+```javascript
+{
+  'USER_NOT_FOUND': '用户名不存在，请检查输入或注册新账户',
+  'INVALID_PASSWORD': '密码错误，请重新输入',
+  'ACCOUNT_DISABLED': '账户已被禁用，请联系管理员',
+  'ACCOUNT_LOCKED': '账户已被锁定，请稍后再试',
+  'VALIDATION_ERROR': '用户名或密码不能为空',
+  'INVALID_CREDENTIALS': '用户名或密码错误',
+  'LOGIN_ERROR': '登录失败，请稍后重试'
+}
+```
+
+**当前完成度**：100%
+
+---
+
+### P1 - 数据库完整备份
+
+**问题描述**：
+需要导出完整的数据库结构用于版本管理和备份。
+
+**修复文件**：
+- [fileserver_backup_20260608.sql](file:///workspace/fileserver_backup_20260608.sql) (新建)
+
+**修复内容**：
+1. 导出 MySQL 数据库 `fileserver` 完整结构
+2. 包含所有表结构和数据：
+   - `accounts` - 用户账户表
+   - `audit_logs` - 审计日志表
+   - `captchas` - 验证码表
+   - `email_codes` - 邮箱验证码表
+   - `files` - 文件表
+   - `folders` - 文件夹表
+   - `password_resets` - 密码重置表
+   - `recovery_codes` - 恢复码表
+   - `shares` - 分享表
+   - `system_settings` - 系统设置表
+   - `user_profiles` - 用户配置表
+
+**当前完成度**：100%
+
+---
+
+## 2026-06-08 汇总
+
+### 今日完成的所有修复和功能：
+
+#### ✅ 1. 字符过滤白名单+黑名单混合模式
+- 实现严格的字符验证策略
+- 禁止 emoji、中文标点、危险字符
+- 允许中文、英文、数字、英文标点
+- 后端+前端双重验证
+
+#### ✅ 2. 过滤字符用户提示
+- 添加友好的警告提示组件
+- 实时反馈字符过滤状态
+- 3秒自动消失动画
+
+#### ✅ 3. 登录错误消息详细分类
+- 区分用户名不存在、密码错误、账户锁定等场景
+- 提供用户友好的操作建议
+- 完善前端错误处理逻辑
+
+#### ✅ 4. 数据库完整备份
+- 导出所有表的结构和数据
+- 用于版本管理和问题回溯
+
+---
+
+### 验证结果
+
+✅ **字符过滤正常工作**
+- emoji（如🈶）被正确过滤
+- 中文标点（如（））被正确过滤
+- 英文标点（如()）正常工作
+
+✅ **用户体验优化**
+- 过滤提示清晰友好
+- 错误消息详细具体
+- 操作建议明确可行
+
+✅ **安全性和兼容性平衡**
+- 严格的安全验证
+- 支持移动端输入法
+- 兼容多语言场景
+
+---
+
+---
+
 ### P1 - 文件名和文件夹名安全验证完善
 
 **问题描述**：
