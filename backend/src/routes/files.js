@@ -11,6 +11,7 @@ const { db } = require('../config/database.adapter');
 const { encryptFile, decryptFileToStream, getFileHash } = require('../utils/encryption');
 const { validateFile, maxFileSize } = require('../middleware/fileValidator');
 const { malwareScan, scanPreview } = require('../middleware/malwareScanner');
+const { validateFilename, validateFoldername } = require('../utils/validators');
 
 const router = express.Router();
 
@@ -323,6 +324,21 @@ router.post('/upload', upload.array('files', 10), validateFile, malwareScan, asy
         } catch (e) {
           originalName = file.originalname;
         }
+      }
+
+      // 验证文件名
+      const fileValidation = validateFilename(originalName, false); // 不强制要求扩展名
+      if (!fileValidation.valid) {
+        conflicts.push({
+          fileName: file.originalname,
+          reason: fileValidation.errors[0],
+          action: 'skipped'
+        });
+        // 删除临时文件
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+        continue;
       }
 
       // 检查同目录下是否已存在同名文件
@@ -657,6 +673,12 @@ router.post('/folders', async (req, res) => {
 
     if (!name) {
       return res.apiError('文件夹名称不能为空', 'VALIDATION_ERROR');
+    }
+
+    // 验证文件夹名称
+    const folderValidation = validateFoldername(name);
+    if (!folderValidation.valid) {
+      return res.apiError(folderValidation.errors[0], 'VALIDATION_ERROR');
     }
 
     // 检查主目录中是否已存在同名文件夹（只检查主目录，不检查回收站）
@@ -1119,6 +1141,30 @@ router.put('/:id/rename', async (req, res) => {
 
     if (!newName) {
       return res.apiError('新文件名不能为空', 'VALIDATION_ERROR');
+    }
+
+    // 先获取文件信息，判断是文件还是文件夹
+    const fileInfo = await db.asyncGet(
+      'SELECT type, mime_type FROM files WHERE id = ? AND account_id = ?',
+      [id, user.id]
+    );
+
+    if (!fileInfo) {
+      return res.apiError('文件不存在', 'FILE_NOT_FOUND');
+    }
+
+    // 根据类型使用相应的验证
+    const isFolder = fileInfo.type === 'folder' || fileInfo.mime_type === 'application/x-directory';
+    if (isFolder) {
+      const folderValidation = validateFoldername(newName);
+      if (!folderValidation.valid) {
+        return res.apiError(folderValidation.errors[0], 'VALIDATION_ERROR');
+      }
+    } else {
+      const fileValidation = validateFilename(newName, false); // 不强制要求扩展名
+      if (!fileValidation.valid) {
+        return res.apiError(fileValidation.errors[0], 'VALIDATION_ERROR');
+      }
     }
 
     const result = await db.asyncRun(
