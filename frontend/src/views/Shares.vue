@@ -12,6 +12,7 @@
           prefix-icon="Search"
           clearable
           class="search-input"
+          @input="handleSearchInput"
         />
       </div>
     </div>
@@ -190,6 +191,7 @@ import { useI18nStore } from '../stores/i18n';
 import { useSharesStore } from '../stores/shares';
 import { toast } from '../utils/toast';
 import { formatDate } from '../utils/format';
+import { filterSearch } from '../utils/inputFilter';
 import EmptyState from '../components/EmptyState.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import ConfirmDialog from '../components/ConfirmDialog.vue';
@@ -313,6 +315,10 @@ const confirmDelete = async () => {
 const isExpired = (date) => {
   if (!date) return false;
   return new Date(date) < new Date();
+};
+
+const handleSearchInput = (value) => {
+  searchQuery.value = filterSearch(value);
 };
 
 const formatExpiry = (date) => {

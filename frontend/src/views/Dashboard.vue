@@ -128,6 +128,11 @@
         </div>
       </div>
       
+      <!-- Upload Progress -->
+      <div v-if="filesStore.isUploading || filesStore.completedUploads.length > 0 || filesStore.failedUploads.length > 0" class="upload-progress-section">
+        <UploadProgress />
+      </div>
+
       <!-- File Section -->
       <div class="file-section">
         <div v-if="loading" class="loading-wrapper">
@@ -381,6 +386,25 @@
         <div v-else-if="isPDFFile(previewFile)" class="pdf-container">
           <iframe :src="previewUrl" class="pdf-preview" />
         </div>
+        <video 
+          v-else-if="isVideoFile(previewFile)"
+          :src="previewUrl"
+          controls
+          class="preview-video"
+        />
+        <audio 
+          v-else-if="isAudioFile(previewFile)"
+          :src="previewUrl"
+          controls
+          class="preview-audio"
+        />
+        <div 
+          v-else-if="isTextFile(previewFile)"
+          class="text-container"
+          ref="textContainerRef"
+        >
+          <pre class="text-preview">{{ textContent }}</pre>
+        </div>
         <div v-else class="unsupported-preview">
           <el-icon :size="80" class="unsupported-icon"><Document /></el-icon>
           <p>{{ i18n.t('previewNotSupported') || 'Preview not supported for this file type' }}</p>
@@ -497,6 +521,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import Breadcrumb from '@/components/Breadcrumb.vue';
 import MoveDialog from '@/components/MoveDialog.vue';
 import FileConflictDialog from '@/components/FileConflictDialog.vue';
+import UploadProgress from '@/components/UploadProgress.vue';
 
 const i18n = useI18nStore();
 const filesStore = useFilesStore();
@@ -530,6 +555,8 @@ const deleting = ref(false);
 const previewLoading = ref(false);
 const previewFile = ref(null);
 const previewUrl = ref(null);
+const textContent = ref('');
+const textContainerRef = ref(null);
 const shareLoading = ref(false);
 const shareForm = ref({
   expiresAt: null,
@@ -697,97 +724,95 @@ const handleFileDoubleClick = (file) => {
 };
 
 const handleUpload = async () => {
-  if (uploadFiles.value.length === 0) {
-    toast.warning(i18n.t('pleaseSelectFiles') || 'Please select files');
-    return;
-  }
-  
-  // 检查是否有文件还在扫描
-  if (isScanningFiles.value) {
-    toast.warning(i18n.t('waitScanComplete') || '请等待文件扫描完成');
-    return;
-  }
-  
-  // 检查是否有危险文件
-  if (hasDangerousFiles.value) {
-    toast.error(i18n.t('hasDangerousFiles') || '检测到危险文件，请移除后重试');
-    return;
-  }
-  
-  // 检查文件名冲突
-  const conflicts = [];
-  const filesWithConflict = new Set();
-  for (const uploadFile of uploadFiles.value) {
-    const fileObj = uploadFile.raw || uploadFile;
-    const fileName = fileObj.name;
-    if (fileName) {
-      try {
-        const response = await filesAPI.checkConflict({
-          fileName: fileName,
-          folderId: filesStore.currentFolderId,
-          action: 'upload'
-        });
-        
-        if (response.success && response.data?.hasConflict) {
-          filesWithConflict.add(fileName);
-          conflicts.push({
+    if (uploadFiles.value.length === 0) {
+      toast.warning(i18n.t('pleaseSelectFiles') || 'Please select files');
+      return;
+    }
+    
+    // 检查是否有文件还在扫描
+    if (isScanningFiles.value) {
+      toast.warning(i18n.t('waitScanComplete') || '请等待文件扫描完成');
+      return;
+    }
+    
+    // 检查是否有危险文件
+    if (hasDangerousFiles.value) {
+      toast.error(i18n.t('hasDangerousFiles') || '检测到危险文件，请移除后重试');
+      return;
+    }
+    
+    // 检查文件名冲突
+    const conflicts = [];
+    const filesWithConflict = new Set();
+    for (const uploadFile of uploadFiles.value) {
+      const fileObj = uploadFile.raw || uploadFile;
+      const fileName = fileObj.name;
+      if (fileName) {
+        try {
+          const response = await filesAPI.checkConflict({
             fileName: fileName,
-            reason: i18n.t('fileExists') || 'File already exists',
-            existingFile: response.data.existingFile,
-            newFile: {
-              name: fileName,
-              size: fileObj.size,
-              type: fileObj.type || (fileName.split('.').pop().toLowerCase())
-            }
+            folderId: filesStore.currentFolderId,
+            action: 'upload'
           });
+          
+          if (response.success && response.data?.hasConflict) {
+            filesWithConflict.add(fileName);
+            conflicts.push({
+              fileName: fileName,
+              reason: i18n.t('fileExists') || 'File already exists',
+              existingFile: response.data.existingFile,
+              newFile: {
+                name: fileName,
+                size: fileObj.size,
+                type: fileObj.type || (fileName.split('.').pop().toLowerCase())
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Check conflict error:', error);
         }
-      } catch (error) {
-        console.error('Check conflict error:', error);
       }
     }
-  }
-  
-  let conflictAction = 'keepBoth';
-  
-  // 如果有冲突，显示对话框
-  if (conflicts.length > 0 && conflictDialog.value) {
-    conflictAction = await conflictDialog.value.showDialog(
-      conflicts,
-      i18n.t('fileConflict') || 'File Conflict'
-    );
     
-    if (conflictAction === 'cancel') {
-      return;
-    }
-  }
-  
-  // 根据冲突处理方式筛选文件
-  let filesToUpload = uploadFiles.value;
-  if (conflictAction === 'skip' && conflicts.length > 0) {
-    // 跳过模式：只上传没有冲突的文件
-    filesToUpload = uploadFiles.value.filter(uploadFile => {
-      const fileName = (uploadFile.raw || uploadFile).name;
-      return !filesWithConflict.has(fileName);
-    });
+    let conflictAction = 'keepBoth';
     
-    if (filesToUpload.length === 0) {
-      toast.info(i18n.t('allFilesSkipped') || 'All files were skipped');
-      return;
+    // 如果有冲突，显示对话框
+    if (conflicts.length > 0 && conflictDialog.value) {
+      conflictAction = await conflictDialog.value.showDialog(
+        conflicts,
+        i18n.t('fileConflict') || 'File Conflict'
+      );
+      
+      if (conflictAction === 'cancel') {
+        return;
+      }
     }
-  }
-  
-  const nativeFiles = filesToUpload.map(f => f.raw);
-  uploading.value = true;
-  try {
-    await filesStore.uploadFiles(nativeFiles, filesStore.currentFolderId, conflictAction);
+    
+    // 根据冲突处理方式筛选文件
+    let filesToUpload = uploadFiles.value;
+    if (conflictAction === 'skip' && conflicts.length > 0) {
+      // 跳过模式：只上传没有冲突的文件
+      filesToUpload = uploadFiles.value.filter(uploadFile => {
+        const fileName = (uploadFile.raw || uploadFile).name;
+        return !filesWithConflict.has(fileName);
+      });
+      
+      if (filesToUpload.length === 0) {
+        toast.info(i18n.t('allFilesSkipped') || 'All files were skipped');
+        return;
+      }
+    }
+    
+    const nativeFiles = filesToUpload.map(f => f.raw);
+    
+    // 立即关闭上传对话框
     showUploadDialog.value = false;
     uploadFiles.value = [];
-  } catch (error) {
-    toast.error(error.error || i18n.t('uploadFailed') || 'Upload failed');
-  } finally {
-    uploading.value = false;
-  }
-};
+    
+    // 初始化上传队列并开始上传
+    filesStore.initUploadQueue(nativeFiles, filesStore.currentFolderId, conflictAction);
+    filesStore.startUploads();
+  };
 
 // 处理文件选择变化
 const handleFileChange = async (file, fileList) => {
@@ -943,36 +968,68 @@ const handleDownload = async (file) => {
 };
 
 const handlePreview = async (file) => {
-  if (file.type === 'folder') return;
-  
-  previewFile.value = file;
-  previewLoading.value = true;
-  showPreviewDialog.value = true;
-  previewUrl.value = null;
+    if (file.type === 'folder') return;
+    
+    previewFile.value = file;
+    previewLoading.value = true;
+    showPreviewDialog.value = true;
+    previewUrl.value = null;
+    textContent.value = '';
 
-  try {
-    const blob = await filesStore.previewFile(file.id);
-    if (blob) {
-      previewUrl.value = URL.createObjectURL(blob);
+    try {
+      const blob = await filesStore.previewFile(file.id);
+      if (blob) {
+        // 如果是文本文件，读取文本内容
+        if (isTextFile(file)) {
+          const text = await blob.text();
+          textContent.value = text;
+        } else {
+          // 其他文件类型使用 URL
+          previewUrl.value = URL.createObjectURL(blob);
+        }
+      }
+    } catch (error) {
+      console.error('Preview failed:', error);
+      toast.error(error.error || i18n.t('previewFailed') || 'Preview failed');
+    } finally {
+      previewLoading.value = false;
     }
-  } catch (error) {
-    console.error('Preview failed:', error);
-    toast.error(error.error || i18n.t('previewFailed') || 'Preview failed');
-  } finally {
-    previewLoading.value = false;
-  }
-};
+  };
 
 const isImageFile = (file) => {
-  if (!file?.name) return false;
-  const ext = file.name.toLowerCase().split('.').pop();
-  return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext);
-};
+    if (!file?.name) return false;
+    const ext = file.name.toLowerCase().split('.').pop();
+    return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tiff', 'tif'].includes(ext);
+  };
 
-const isPDFFile = (file) => {
-  if (!file?.name) return false;
-  return file.name.toLowerCase().endsWith('.pdf');
-};
+  const isPDFFile = (file) => {
+    if (!file?.name) return false;
+    return file.name.toLowerCase().endsWith('.pdf');
+  };
+
+  const isVideoFile = (file) => {
+    if (!file?.name) return false;
+    const ext = file.name.toLowerCase().split('.').pop();
+    return ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'flv'].includes(ext);
+  };
+
+  const isAudioFile = (file) => {
+    if (!file?.name) return false;
+    const ext = file.name.toLowerCase().split('.').pop();
+    return ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'].includes(ext);
+  };
+
+  const isTextFile = (file) => {
+    if (!file?.name) return false;
+    const ext = file.name.toLowerCase().split('.').pop();
+    return [
+      'txt', 'md', 'json', 'xml', 'html', 'htm', 'css', 'js', 'ts', 'jsx', 'tsx',
+      'py', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'go', 'rs', 'rb', 'php',
+      'sh', 'bat', 'cmd', 'ps1', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf',
+      'log', 'csv', 'sql', 'graphql', 'vue', 'svelte', 'swift', 'kt', 'kts',
+      'dart', 'lua', 'perl', 'r', 'scala', 'groovy', 'coffee', 'less', 'scss', 'sass'
+    ].includes(ext);
+  };
 
 const downloadPreviewFile = async () => {
   if (!previewFile.value) return;
@@ -1162,6 +1219,13 @@ const copyShareLink = () => {
   margin: 0;
   width: 100%;
   height: 100%;
+}
+
+.upload-progress-section {
+  padding: 16px;
+  background: var(--el-bg-color);
+  border-radius: 16px;
+  box-shadow: var(--el-box-shadow-light);
 }
 
 .dashboard-header {
@@ -1421,6 +1485,36 @@ const copyShareLink = () => {
   width: 100%;
   height: 100%;
   border: none;
+}
+
+.preview-video {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 8px;
+}
+
+.preview-audio {
+  width: 100%;
+  max-width: 600px;
+}
+
+.text-container {
+  width: 100%;
+  max-height: 70vh;
+  overflow: auto;
+  background: #1e1e1e;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.text-preview {
+  margin: 0;
+  color: #d4d4d4;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
 .unsupported-preview {

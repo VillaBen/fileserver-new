@@ -109,9 +109,26 @@ export const filesAPI = {
   previewScan: (formData) => apiClient.post('/files/preview-scan', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
-  upload: (formData) => apiClient.post('/files/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  upload: (formData, options = {}) => {
+    const config = {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      ...options,
+    };
+    return apiClient.post('/files/upload', formData, config);
+  },
+  uploadWithProgress: (formData, onProgress, options = {}) => {
+    const config = {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total > 0) {
+          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          onProgress(percent);
+        }
+      },
+      ...options,
+    };
+    return apiClient.post('/files/upload', formData, config);
+  },
   download: (id) => apiClient.get(`/files/${id}/download`, { responseType: 'blob' }),
   preview: (id) => apiClient.get(`/files/${id}/preview`, { responseType: 'blob' }),
   delete: (id) => apiClient.delete(`/files/${id}`),

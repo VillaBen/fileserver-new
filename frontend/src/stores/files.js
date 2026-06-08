@@ -23,6 +23,24 @@ export const useFilesStore = defineStore('files', () => {
   const folderHistory = ref([]); // 用于记录文件夹历史，构建面包屑
   const folderMap = ref(new Map()); // 用于快速查找文件夹信息
 
+  // 上传管理相关状态
+  const uploadQueue = ref([]); // 上传队列
+  const activeUploads = ref([]); // 正在进行的上传
+  const completedUploads = ref([]); // 已完成的上传
+  const failedUploads = ref([]); // 失败的上传
+  const isUploading = computed(() => activeUploads.value.length > 0);
+  const uploadProgress = computed(() => {
+    if (uploadQueue.value.length === 0 && activeUploads.value.length === 0) return 0;
+    const totalFiles = uploadQueue.value.length + activeUploads.value.length + completedUploads.value.length + failedUploads.value.length;
+    const completedFiles = completedUploads.value.length;
+    let totalProgress = 0;
+    activeUploads.value.forEach(upload => {
+      totalProgress += upload.progress || 0;
+    });
+    const activeAvg = activeUploads.value.length > 0 ? totalProgress / activeUploads.value.length : 0;
+    return Math.round(((completedFiles * 100 + activeAvg * activeUploads.value.length) / totalFiles) || 0);
+  });
+
   const breadcrumbs = computed(() => {
     const crumbs = [{ id: null, name: i18n.t('myFiles') || '我的文件' }];
     
@@ -128,6 +146,168 @@ export const useFilesStore = defineStore('files', () => {
     }
   }
 
+  // 初始化上传队列
+  function initUploadQueue(selectedFiles, folderId = null, conflictAction = 'keepBoth') {
+    uploadQueue.value = [];
+    activeUploads.value = [];
+    completedUploads.value = [];
+    failedUploads.value = [];
+    
+    selectedFiles.forEach((file, index) => {
+      uploadQueue.value.push({
+        id: `upload-${Date.now()}-${index}`,
+        file,
+        name: file.name,
+        size: file.size,
+        progress: 0,
+        status: 'pending', // pending, uploading, completed, failed, paused
+        folderId,
+        conflictAction,
+        controller: null,
+      });
+    });
+    
+    return uploadQueue.value;
+  }
+
+  // 开始上传
+  async function startUploads(folderId = null, conflictAction = 'keepBoth') {
+    const maxConcurrent = 3; // 最多同时上传 3 个文件
+    
+    while (uploadQueue.value.length > 0 || activeUploads.value.length > 0) {
+      // 启动新的上传
+      while (activeUploads.value.length < maxConcurrent && uploadQueue.value.length > 0) {
+        const uploadItem = uploadQueue.value.shift();
+        uploadItem.status = 'uploading';
+        activeUploads.value.push(uploadItem);
+        
+        // 异步开始上传
+        uploadSingleFile(uploadItem, folderId, conflictAction);
+      }
+      
+      // 等待一下
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+
+  // 上传单个文件
+  async function uploadSingleFile(uploadItem, folderId, conflictAction) {
+    const formData = new FormData();
+    formData.append('files', uploadItem.file);
+    if (folderId !== null) {
+      formData.append('folderId', folderId);
+    }
+    formData.append('conflictAction', conflictAction);
+    
+    // 创建 AbortController 用于取消上传
+    const controller = new AbortController();
+    uploadItem.controller = controller;
+    
+    try {
+      const response = await filesAPI.uploadWithProgress(
+        formData,
+        (progress) => {
+          uploadItem.progress = progress;
+        },
+        { signal: controller.signal }
+      );
+      
+      if (response.success) {
+        uploadItem.status = 'completed';
+        uploadItem.progress = 100;
+        completedUploads.value.push(uploadItem);
+      } else {
+        throw response;
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        // 上传被取消
+        uploadItem.status = 'failed';
+        failedUploads.value.push(uploadItem);
+      } else {
+        uploadItem.status = 'failed';
+        failedUploads.value.push(uploadItem);
+        console.error('Upload failed:', error);
+      }
+    } finally {
+      // 从 activeUploads 中移除
+      const index = activeUploads.value.findIndex(u => u.id === uploadItem.id);
+      if (index > -1) {
+        activeUploads.value.splice(index, 1);
+      }
+      
+      // 检查是否所有上传都完成
+      if (uploadQueue.value.length === 0 && activeUploads.value.length === 0) {
+        toast.success(i18n.t('uploadSuccess'));
+        await loadFiles(currentFolderId.value);
+      }
+    }
+  }
+
+  // 暂停上传
+  function pauseUpload(uploadId) {
+    const upload = activeUploads.value.find(u => u.id === uploadId);
+    if (upload && upload.controller) {
+      upload.status = 'paused';
+      upload.controller.abort();
+      // 移回队列前端
+      const index = activeUploads.value.findIndex(u => u.id === uploadId);
+      if (index > -1) {
+        activeUploads.value.splice(index, 1);
+      }
+      uploadQueue.value.unshift(upload);
+    }
+  }
+
+  // 恢复上传
+  function resumeUpload(uploadId) {
+    const upload = uploadQueue.value.find(u => u.id === uploadId);
+    if (upload && upload.status === 'paused') {
+      upload.status = 'pending';
+      upload.controller = null;
+    }
+  }
+
+  // 取消上传
+  function cancelUpload(uploadId) {
+    // 检查在 activeUploads 中
+    const activeIndex = activeUploads.value.findIndex(u => u.id === uploadId);
+    if (activeIndex > -1) {
+      const upload = activeUploads.value[activeIndex];
+      if (upload.controller) {
+        upload.controller.abort();
+      }
+      activeUploads.value.splice(activeIndex, 1);
+      return;
+    }
+    
+    // 检查在 queue 中
+    const queueIndex = uploadQueue.value.findIndex(u => u.id === uploadId);
+    if (queueIndex > -1) {
+      uploadQueue.value.splice(queueIndex, 1);
+    }
+  }
+
+  // 清空上传记录
+  function clearUploads() {
+    uploadQueue.value = [];
+    activeUploads.value = [];
+    completedUploads.value = [];
+    failedUploads.value = [];
+  }
+
+  // 重新上传失败的文件
+  async function retryFailedUploads() {
+    failedUploads.value.forEach(upload => {
+      upload.status = 'pending';
+      upload.progress = 0;
+      uploadQueue.value.push(upload);
+    });
+    failedUploads.value = [];
+    await startUploads();
+  }
+
+  // 旧的上传方法（保持兼容性）
   async function uploadFiles(selectedFiles, folderId = null, conflictAction = 'keepBoth') {
     const formData = new FormData();
     selectedFiles.forEach((file) => {
@@ -368,6 +548,21 @@ export const useFilesStore = defineStore('files', () => {
     hasSelectedItems,
     breadcrumbs,
     stats,
+    // 上传相关
+    uploadQueue,
+    activeUploads,
+    completedUploads,
+    failedUploads,
+    isUploading,
+    uploadProgress,
+    initUploadQueue,
+    startUploads,
+    pauseUpload,
+    resumeUpload,
+    cancelUpload,
+    clearUploads,
+    retryFailedUploads,
+    // 基础功能
     loadFiles,
     loadTrash,
     uploadFiles,

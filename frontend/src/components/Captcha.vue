@@ -12,6 +12,18 @@
         class="captcha-input"
         @input="handleInput"
       />
+      <button 
+        v-if="captchaCode" 
+        type="button" 
+        class="clear-btn" 
+        @click="clearCaptcha"
+        :title="i18n.t('clear') || 'Clear'"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
     </div>
     <div class="captcha-wrapper" @click="refreshCaptcha" :title="i18n.t('clickToRefresh')">
       <img v-if="captchaImage" :src="captchaImage" :alt="i18n.t('verificationCode')" class="captcha-image" />
@@ -32,9 +44,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { useI18nStore } from '../stores/i18n';
 import { captchaAPI } from '../api';
+import { filterCaptcha } from '../utils/inputFilter';
 
 const i18n = useI18nStore();
 
@@ -52,7 +65,16 @@ const captchaImage = ref('');
 const captchaId = ref('');
 
 function handleInput() {
+  const sanitized = filterCaptcha(captchaCode.value);
+  if (sanitized !== captchaCode.value) {
+    captchaCode.value = sanitized;
+  }
   emit('update:modelValue', captchaCode.value);
+}
+
+function clearCaptcha() {
+  captchaCode.value = '';
+  emit('update:modelValue', '');
 }
 
 async function refreshCaptcha() {
@@ -71,7 +93,12 @@ async function refreshCaptcha() {
 }
 
 onMounted(() => {
+  captchaCode.value = props.modelValue;
   refreshCaptcha();
+});
+
+watch(() => props.modelValue, (newValue) => {
+  captchaCode.value = newValue;
 });
 
 function getCaptchaData() {
@@ -84,6 +111,7 @@ function getCaptchaData() {
 defineExpose({
   refreshCaptcha,
   getCaptchaData,
+  clearCaptcha,
 });
 </script>
 
@@ -129,6 +157,32 @@ defineExpose({
   color: var(--text-primary);
   padding: 14px 0;
   min-width: 0;
+}
+
+.clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--gray-400);
+  transition: color var(--transition-base);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.clear-btn:hover {
+  color: var(--gray-600);
+  background: var(--gray-100);
+}
+
+.clear-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .captcha-input::placeholder {

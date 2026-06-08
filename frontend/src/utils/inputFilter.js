@@ -28,6 +28,10 @@ export const FILTER_RULES = {
   PASSWORD: {
     pattern: null, // 密码不做字符过滤
     maxLength: 100
+  },
+  CAPTCHA: {
+    pattern: /[^a-zA-Z0-9]/g, // 验证码只允许字母和数字
+    maxLength: 20
   }
 };
 
@@ -127,4 +131,11 @@ export function filterFolderName(value, onFilter) {
  */
 export function filterSearch(value, onFilter) {
   return filterInput(value, FILTER_RULES.SEARCH, onFilter);
+}
+
+/**
+ * 验证码过滤
+ */
+export function filterCaptcha(value, onFilter) {
+  return filterInput(value, FILTER_RULES.CAPTCHA, onFilter);
 }
