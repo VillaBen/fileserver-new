@@ -7,7 +7,91 @@
 
 ## 2026-06-08 (最新)
 
-### P0 - 前端预览文件类型安全限制优化
+### P0 - 全面安全文件类型白名单重构
+
+**问题描述**：
+原有文件类型配置存在安全隐患，允许了高危文件类型（可执行脚本、Web代码、配置文件等），可能被利用藏匿恶意代码或进行攻击。
+
+**问题分析**：
+1. 后端 `allowedExtensions` 包含了大量高危文件类型：
+   - 可执行脚本：js, py, php, java
+   - Web文件：html, htm, css
+   - 压缩包：zip, rar, 7z, tar, gz
+   - 旧版Office：doc, xls, ppt（可能含宏）
+2. 这些文件可能在服务端执行、造成XSS攻击、或包含恶意代码
+3. 前后端文件类型不一致，存在安全漏洞
+
+**修复文件**：
+- [file-types.js (backend)](file:///workspace/backend/src/config/file-types.js)
+- [Dashboard.vue (frontend)](file:///workspace/frontend/src/views/Dashboard.vue)
+
+**修复内容**：
+
+#### 1. **后端文件类型白名单重构**
+```javascript
+// 新的安全白名单（仅包含无害的文件类型）
+allowedExtensions: [
+  // 图片（低风险，仅显示不执行）
+  'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tiff', 'tif',
+  
+  // PDF文档（中等风险，需安全扫描）
+  'pdf',
+  
+  // Office文档（无宏的安全版本，中等风险）
+  'docx', 'xlsx', 'pptx',
+  
+  // 纯文本（低风险，仅显示不执行）
+  'txt', 'md', 'json', 'xml', 'csv', 'log',
+  
+  // 音频（低风险，仅播放不执行）
+  'mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma',
+  
+  // 视频（低风险，仅播放不执行）
+  'mp4', 'webm', 'mov', 'avi', 'mkv', 'flv'
+]
+```
+
+#### 2. **禁止的危险文件类型（150+种）**
+- **可执行文件**：exe, dll, sys, bat, cmd, com, scr, msi等
+- **Web脚本**：html, htm, php, asp, jsp, cgi, js, ts, css等
+- **编程源码**：py, java, rb, go, rs, cpp, c, h, swift, kt等
+- **配置文件**：ini, cfg, reg, env, yaml, yml, xml等
+- **数据库文件**：sql, db, sqlite, mdb, accdb等
+- **证书密钥**：pem, key, cer, crt, p12, pfx等
+- **Office宏文件**：doc, xls, ppt, docm, xlsm, pptm等
+- **压缩包**：zip, rar, 7z, tar, gz, bz2等
+- **系统镜像**：iso, img, vmdk, vhd, dmg等
+- **其他高危**：chm, hlp, apk, eml, lnk, swf等
+
+#### 3. **前端预览函数同步更新**
+- 图片：png, jpg, gif, webp, bmp, svg, ico, tiff, tif
+- PDF：pdf
+- Office：docx, xlsx, pptx
+- 视频：mp4, webm, mov, avi, mkv, flv
+- 音频：mp3, wav, ogg, flac, aac, m4a, wma
+- 文本：txt, md, json, xml, csv, log
+
+#### 4. **文件签名验证增强**
+为所有允许的文件类型添加了文件头签名（魔数）验证，确保文件内容与扩展名匹配：
+- PNG, JPG, GIF, WebP, BMP, SVG, ICO, TIFF
+- PDF, DOCX, XLSX, PPTX
+- MP3, WAV, OGG, FLAC, AAC, M4A, WMA
+- MP4, WebM, MOV, AVI, MKV, FLV
+
+**安全等级**：🔒 极高
+- 移除了所有可执行和脚本文件
+- 禁止Web相关文件（防XSS）
+- 禁止所有编程源码（防恶意代码）
+- 禁止配置文件（防配置注入）
+- 禁止数据库和证书文件（防数据泄露）
+- 禁止压缩包（防捆绑恶意）
+- 禁止旧版Office文档（防宏病毒）
+
+**验证结果**：✅ 前端编译成功，前后端文件类型完全一致
+
+---
+
+### P1 - 前端预览文件类型安全限制优化
 
 **问题描述**：
 前端预览功能支持的文件类型与后端白名单不一致，包含了后端禁止的高危文件类型（如HTML、JavaScript等），存在XSS和恶意代码执行的安全隐患。

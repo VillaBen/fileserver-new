@@ -999,7 +999,7 @@ const handlePreview = async (file) => {
 const isImageFile = (file) => {
     if (!file?.name) return false;
     const ext = file.name.toLowerCase().split('.').pop();
-    return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext);
+    return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tiff', 'tif'].includes(ext);
   };
 
   const isPDFFile = (file) => {
@@ -1007,22 +1007,28 @@ const isImageFile = (file) => {
     return file.name.toLowerCase().endsWith('.pdf');
   };
 
+  const isOfficeFile = (file) => {
+    if (!file?.name) return false;
+    const ext = file.name.toLowerCase().split('.').pop();
+    return ['docx', 'xlsx', 'pptx'].includes(ext);
+  };
+
   const isVideoFile = (file) => {
     if (!file?.name) return false;
     const ext = file.name.toLowerCase().split('.').pop();
-    return ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'].includes(ext);
+    return ['mp4', 'webm', 'mov', 'avi', 'mkv', 'flv'].includes(ext);
   };
 
   const isAudioFile = (file) => {
     if (!file?.name) return false;
     const ext = file.name.toLowerCase().split('.').pop();
-    return ['mp3', 'wav', 'ogg', 'flac', 'aac'].includes(ext);
+    return ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'].includes(ext);
   };
 
   const isTextFile = (file) => {
     if (!file?.name) return false;
     const ext = file.name.toLowerCase().split('.').pop();
-    return ['txt', 'md', 'json', 'xml', 'csv'].includes(ext);
+    return ['txt', 'md', 'json', 'xml', 'csv', 'log'].includes(ext);
   };
 
 const downloadPreviewFile = async () => {
