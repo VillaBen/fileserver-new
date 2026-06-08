@@ -7,6 +7,63 @@
 
 ## 2026-06-08 (最新)
 
+### P0 - 头像上传安全增强
+
+**问题描述**：
+头像上传功能存在安全隐患，没有使用统一的安全验证系统，文件类型验证不够严格，可能被利用上传恶意图片或文件。
+
+**问题分析**：
+1. 头像上传没有使用 `fileValidator.js` 安全验证中间件
+2. 仅检查 MIME 类型前缀，没有验证文件头签名（魔数）
+3. 允许 SVG 图片（可能包含恶意脚本）
+4. 与新的安全白名单不一致
+5. 文件扩展名验证不充分
+
+**修复文件**：
+- [fileValidator.js (backend)](file:///workspace/backend/src/middleware/fileValidator.js)
+- [user.js (backend)](file:///workspace/backend/src/routes/user.js)
+- [UserController.js (backend)](file:///workspace/backend/src/controllers/UserController.js)
+
+**修复内容**：
+
+#### 1. **新增头像专用验证中间件**
+- 添加 `validateAvatar` 中间件，专门用于头像安全验证
+- 新增 `isSafeImageType()` 函数，只允许安全的图片类型
+- 新增 `isValidAvatarSize()` 函数，验证头像文件大小
+- **特别禁止 SVG 图片**（防止 XSS 攻击）
+
+#### 2. **安全图片类型白名单**
+头像仅允许：`PNG, JPG, JPEG, GIF, WebP, BMP`
+- ❌ 禁止 SVG（可能包含恶意脚本）
+- ✅ 文件签名验证（魔数检测）
+- ✅ MIME 类型验证
+- ✅ 扩展名白名单
+- ✅ 文件大小限制（5MB）
+
+#### 3. **重构上传流程**
+- 头像上传路由使用 `validateAvatar` 中间件
+- 控制器移除重复验证逻辑
+- 文件扩展名安全处理（强制使用白名单）
+- 更新 `getAvatarFile` 支持所有安全图片类型
+
+#### 4. **完整的安全验证链**
+```
+用户上传 → multer解析 → validateAvatar中间件 → 
+  1. 文件存在性检查
+  2. 大小检查 (5MB)
+  3. 安全图片类型验证
+  4. MIME类型验证
+  5. 文件头签名验证 → 上传成功
+```
+
+**安全等级**：🔒 极高
+- 禁止可能含脚本的 SVG 图片
+- 完整的文件签名验证（魔数检测）
+- 与统一安全系统集成
+- 多层安全检查
+
+---
+
 ### P0 - 全面安全文件类型白名单重构
 
 **问题描述**：

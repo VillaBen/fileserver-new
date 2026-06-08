@@ -3,7 +3,8 @@ const {
   allowedMimeTypes, 
   fileSignatures, 
   blockedExtensions, 
-  maxFileSize 
+  maxFileSize,
+  maxAvatarSize
 } = require('../config/file-types');
 
 // 获取文件扩展名
@@ -72,6 +73,66 @@ function isValidFileSize(size) {
   return size <= maxFileSize;
 }
 
+// 验证头像文件大小
+function isValidAvatarSize(size) {
+  return size <= maxAvatarSize;
+}
+
+// 验证是否为安全的图片类型（用于头像）
+function isSafeImageType(filename, mimeType) {
+  if (!filename || !mimeType) return false;
+  
+  // 只允许安全的图片扩展名
+  const safeExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'];
+  const ext = getFileExtension(filename);
+  
+  if (!safeExtensions.includes(ext)) {
+    return false;
+  }
+  
+  // MIME类型必须以image/开头
+  if (!mimeType.startsWith('image/')) {
+    return false;
+  }
+  
+  // 特别禁止 SVG（可能包含恶意脚本）
+  if (ext === 'svg' || mimeType === 'image/svg+xml') {
+    return false;
+  }
+  
+  return true;
+}
+
+// 头像验证中间件
+function validateAvatar(req, res, next) {
+  const file = req.file;
+  
+  if (!file) {
+    return res.apiError('请上传文件', 'NO_FILE_PROVIDED');
+  }
+  
+  // 检查文件大小
+  if (!isValidAvatarSize(file.size)) {
+    return res.apiError(`头像大小超过限制（最大 ${maxAvatarSize / (1024 * 1024)}MB）`, 'FILE_TOO_LARGE');
+  }
+  
+  // 检查是否为安全的图片类型
+  if (!isSafeImageType(file.originalname, file.mimetype)) {
+    const ext = getFileExtension(file.originalname);
+    return res.apiError(`不支持的图片类型: ${ext || '无扩展名'}（仅支持 PNG, JPG, GIF, WebP, BMP）`, 'INVALID_AVATAR_TYPE');
+  }
+  
+  // 检查文件头签名
+  if (file.buffer) {
+    const signatureResult = verifyFileSignature(file.buffer, file.originalname);
+    if (!signatureResult.valid) {
+      return res.apiError(signatureResult.message, 'FILE_CONTENT_MISMATCH');
+    }
+  }
+  
+  next();
+}
+
 // 文件验证中间件
 function validateFile(req, res, next) {
   const files = req.files || (req.file ? [req.file] : []);
@@ -114,6 +175,10 @@ module.exports = {
   isValidMimeType,
   verifyFileSignature,
   isValidFileSize,
+  isValidAvatarSize,
+  isSafeImageType,
   validateFile,
-  maxFileSize
+  validateAvatar,
+  maxFileSize,
+  maxAvatarSize
 };

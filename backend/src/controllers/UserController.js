@@ -445,58 +445,46 @@ const uploadAvatar = async (req, res) => {
     console.log('[Backend-Avatar] 1. 收到上传请求, accountId:', accountId);
     console.log('[Backend-Avatar] 2. 文件信息:', file);
 
-    if (!file) {
-      console.log('[Backend-Avatar] 3. 没有文件');
-      return res.apiError('请上传文件', 'NO_FILE_PROVIDED');
-    }
-
-    if (!file.mimetype.startsWith('image/')) {
-      console.log('[Backend-Avatar] 4. 文件类型不正确:', file.mimetype);
-      return res.apiError('只能上传图片文件', 'INVALID_FILE_TYPE');
-    }
-
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      console.log('[Backend-Avatar] 5. 文件太大:', file.size);
-      return res.apiError('头像大小不能超过5MB', 'FILE_TOO_LARGE');
-    }
-
     const uploadDir = path.join(__dirname, '../../uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
-      console.log('[Backend-Avatar] 6. 创建上传目录');
+      console.log('[Backend-Avatar] 3. 创建上传目录');
     }
 
-    const fileExtension = path.extname(file.originalname);
+    // 获取安全的文件扩展名（从我们支持的安全图片类型中）
+    const originalExt = path.extname(file.originalname).toLowerCase();
+    const safeExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'];
+    const fileExtension = safeExtensions.includes(originalExt) ? originalExt : '.png';
+    
     const filename = `avatar-${uuidv4()}${fileExtension}`;
     const filePath = path.join(uploadDir, filename);
 
-    console.log('[Backend-Avatar] 7. 保存文件到:', filePath);
+    console.log('[Backend-Avatar] 4. 保存文件到:', filePath);
     fs.writeFileSync(filePath, file.buffer);
-    console.log('[Backend-Avatar] 8. 文件已保存');
+    console.log('[Backend-Avatar] 5. 文件已保存');
 
     // 删除旧头像
     const profile = await db.asyncGet(
       'SELECT avatar FROM user_profiles WHERE account_id = ?',
       [accountId]
     );
-    console.log('[Backend-Avatar] 9. 旧头像信息:', profile);
+    console.log('[Backend-Avatar] 6. 旧头像信息:', profile);
     
     if (profile && profile.avatar) {
       const oldAvatarPath = path.join(uploadDir, profile.avatar);
       if (fs.existsSync(oldAvatarPath)) {
-        console.log('[Backend-Avatar] 10. 删除旧头像:', oldAvatarPath);
+        console.log('[Backend-Avatar] 7. 删除旧头像:', oldAvatarPath);
         fs.unlinkSync(oldAvatarPath);
       }
     }
 
     // 更新头像
-    console.log('[Backend-Avatar] 11. 更新数据库, filename:', filename);
+    console.log('[Backend-Avatar] 8. 更新数据库, filename:', filename);
     await db.asyncRun(
       'UPDATE user_profiles SET avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE account_id = ?',
       [filename, accountId]
     );
-    console.log('[Backend-Avatar] 12. 数据库已更新');
+    console.log('[Backend-Avatar] 9. 数据库已更新');
 
     // 记录审计日志
     await db.asyncRun(
@@ -505,10 +493,10 @@ const uploadAvatar = async (req, res) => {
     );
 
     const responseData = { avatar: filename, avatarUrl: `/api/user/avatar/${filename}` };
-    console.log('[Backend-Avatar] 13. 返回数据:', responseData);
+    console.log('[Backend-Avatar] 10. 返回数据:', responseData);
     res.apiSuccess(responseData, '头像上传成功');
   } catch (error) {
-    console.error('[Backend-Avatar] 14. 上传失败:', error);
+    console.error('[Backend-Avatar] 11. 上传失败:', error);
     res.apiError('上传头像失败', 'UPLOAD_AVATAR_ERROR');
   }
 };
@@ -562,31 +550,40 @@ const getAvatarFile = async (req, res) => {
     console.log('[Backend-getAvatarFile] 1. 收到请求, filename:', filename);
     
     // 安全检查：确保文件名格式正确
-    if (!filename || !filename.startsWith('avatar-') || !filename.endsWith('.png') && !filename.endsWith('.jpg') && !filename.endsWith('.jpeg') && !filename.endsWith('.gif')) {
+    const safeExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'];
+    if (!filename || !filename.startsWith('avatar-')) {
       console.log('[Backend-getAvatarFile] 2. 文件名格式不正确');
+      return res.status(400).send('Invalid filename');
+    }
+    
+    // 检查扩展名是否安全
+    const ext = path.extname(filename).toLowerCase();
+    if (!safeExtensions.includes(ext)) {
+      console.log('[Backend-getAvatarFile] 3. 不安全的文件扩展名');
       return res.status(400).send('Invalid filename');
     }
     
     const uploadDir = path.join(__dirname, '../../uploads');
     const filePath = path.join(uploadDir, filename);
     
-    console.log('[Backend-getAvatarFile] 3. 文件路径:', filePath);
+    console.log('[Backend-getAvatarFile] 4. 文件路径:', filePath);
     
     // 检查文件是否存在
     if (!fs.existsSync(filePath)) {
-      console.log('[Backend-getAvatarFile] 4. 文件不存在');
+      console.log('[Backend-getAvatarFile] 5. 文件不存在');
       return res.status(404).send('File not found');
     }
     
-    console.log('[Backend-getAvatarFile] 5. 文件存在，开始发送');
+    console.log('[Backend-getAvatarFile] 6. 文件存在，开始发送');
     
     // 设置正确的Content-Type
-    const ext = path.extname(filename).toLowerCase();
     const contentType = {
       '.png': 'image/png',
       '.jpg': 'image/jpeg',
       '.jpeg': 'image/jpeg',
-      '.gif': 'image/gif'
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+      '.bmp': 'image/bmp'
     }[ext] || 'application/octet-stream';
     
     res.setHeader('Content-Type', contentType);
@@ -596,9 +593,9 @@ const getAvatarFile = async (req, res) => {
     const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
     
-    console.log('[Backend-getAvatarFile] 6. 文件发送完成');
+    console.log('[Backend-getAvatarFile] 7. 文件发送完成');
   } catch (error) {
-    console.error('[Backend-getAvatarFile] 7. 获取头像文件错误:', error);
+    console.error('[Backend-getAvatarFile] 8. 获取头像文件错误:', error);
     res.status(500).send('Internal server error');
   }
 };

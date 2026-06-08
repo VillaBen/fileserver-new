@@ -3,6 +3,7 @@ const express = require('express');
 const multer = require('multer');
 const userController = require('../controllers/UserController');
 const { requireAuth } = require('../middleware/auth');
+const { validateAvatar } = require('../middleware/fileValidator');
 
 const router = express.Router();
 const upload = multer();
@@ -15,7 +16,7 @@ router.put('/profile', requireAuth, userController.updateProfile);
 router.get('/storage', requireAuth, userController.getStorageInfo);
 router.post('/security-question', requireAuth, userController.setSecurityQuestion);
 router.post('/verify-security-question', requireAuth, userController.verifySecurityQuestion);
-router.post('/avatar', requireAuth, upload.single('avatar'), userController.uploadAvatar);
+router.post('/avatar', requireAuth, upload.single('avatar'), validateAvatar, userController.uploadAvatar);
 router.delete('/avatar', requireAuth, userController.deleteAvatar);
 router.get('/avatar/:filename', userController.getAvatarFile);
 
