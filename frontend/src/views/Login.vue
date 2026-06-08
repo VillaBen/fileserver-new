@@ -234,6 +234,7 @@ import { useAuthStore } from '../stores/auth';
 import { useI18nStore } from '../stores/i18n';
 import Captcha from '../components/Captcha.vue';
 import LanguageSelector from '../components/LanguageSelector.vue';
+import { filterUsername } from '../utils/inputFilter';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -331,23 +332,12 @@ async function cancelTwoFactor() {
   twoFactorCode.value = '';
 }
 
-// 字符过滤函数
-const sanitizeUsername = (value) => {
-  if (!value) return '';
-  const originalLength = value.length;
-  // 只允许字母、数字、下划线、连字符，限制最大长度
-  let sanitized = value.replace(/[^a-zA-Z0-9_-]/g, '');
-  sanitized = sanitized.slice(0, 50);
-  
-  // 如果有字符被过滤或截断，显示提示
-  if (sanitized.length < originalLength && originalLength > 0) {
-    showFilterWarning.value = true;
-    setTimeout(() => {
-      showFilterWarning.value = false;
-    }, 3000);
-  }
-  
-  return sanitized;
+// 显示过滤警告提示
+const showFilterWarningToast = () => {
+  showFilterWarning.value = true;
+  setTimeout(() => {
+    showFilterWarning.value = false;
+  }, 3000);
 };
 
 const sanitizeTwoFactorCode = (value) => {
@@ -356,9 +346,10 @@ const sanitizeTwoFactorCode = (value) => {
   return value.replace(/[^0-9]/g, '').slice(0, 6);
 };
 
-// 输入处理函数
+// 输入处理函数（使用统一过滤工具）
 const handleUsernameInput = (value) => {
-  formData.username = sanitizeUsername(value);
+  const sanitized = filterUsername(value, showFilterWarningToast);
+  formData.username = sanitized;
 };
 
 const handleTwoFactorInput = (value) => {

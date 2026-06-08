@@ -292,6 +292,7 @@ import { userAPI } from '../api';
 import Captcha from '../components/Captcha.vue';
 import PasswordStrength from '../components/PasswordStrength.vue';
 import LanguageSelector from '../components/LanguageSelector.vue';
+import { filterUsername, filterEmail } from '../utils/inputFilter';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -320,23 +321,12 @@ const formData = reactive({
   captcha: ''
 });
 
-// 字符过滤函数
-const sanitizeUsername = (value) => {
-  if (!value) return '';
-  const originalLength = value.length;
-  // 只允许字母、数字、下划线、连字符，限制最大长度
-  let sanitized = value.replace(/[^a-zA-Z0-9_-]/g, '');
-  sanitized = sanitized.slice(0, 50);
-  
-  // 如果有字符被过滤或截断，显示提示
-  if (sanitized.length < originalLength && originalLength > 0) {
-    showFilterWarning.value = true;
-    setTimeout(() => {
-      showFilterWarning.value = false;
-    }, 3000);
-  }
-  
-  return sanitized;
+// 显示过滤警告提示
+const showFilterWarningToast = () => {
+  showFilterWarning.value = true;
+  setTimeout(() => {
+    showFilterWarning.value = false;
+  }, 3000);
 };
 
 // Check username availability (real-time)
@@ -403,9 +393,10 @@ const debouncedCheckEmail = () => {
   }, 500);
 };
 
-// 输入处理函数
+// 输入处理函数（防止内容残留）
 const handleUsernameInput = (value) => {
-  const sanitized = sanitizeUsername(value);
+  // 直接使用统一的过滤函数，防止部分内容残留
+  const sanitized = filterUsername(value, showFilterWarningToast);
   formData.username = sanitized;
   // 实时检查用户名可用性
   debouncedCheckUsername();
@@ -413,7 +404,9 @@ const handleUsernameInput = (value) => {
 
 // 邮箱输入处理（实时检查）
 const handleEmailInput = (value) => {
-  formData.email = value.slice(0, 100);
+  // 直接使用统一的过滤函数，防止部分内容残留
+  const sanitized = filterEmail(value, showFilterWarningToast);
+  formData.email = sanitized;
   // 实时检查邮箱可用性
   debouncedCheckEmail();
 };

@@ -423,6 +423,7 @@ import { userAPI } from '../api';
 import { toast } from '../utils/toast';
 import { formatFileSize } from '../utils/format';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
+import { filterUsername, filterEmail, filterDisplayName } from '../utils/inputFilter';
 
 const i18n = useI18nStore();
 const authStore = useAuthStore();
@@ -969,52 +970,31 @@ const setTheme = (newTheme) => {
   toast.success(i18n.t('themeUpdated'));
 };
 
-// 字符过滤函数
-const sanitizeUsername = (value) => {
-  if (!value) return '';
-  const originalLength = value.length;
-  // 只允许字母、数字、下划线、连字符，限制最大长度
-  let sanitized = value.replace(/[^a-zA-Z0-9_-]/g, '');
-  sanitized = sanitized.slice(0, 50);
-  
-  // 如果有字符被过滤或截断，显示提示
-  if (sanitized.length < originalLength && originalLength > 0) {
-    showFilterWarning.value = true;
-    setTimeout(() => {
-      showFilterWarning.value = false;
-    }, 3000);
-  }
-  
-  return sanitized;
+// 显示过滤警告提示
+const showFilterWarningToast = () => {
+  showFilterWarning.value = true;
+  setTimeout(() => {
+    showFilterWarning.value = false;
+  }, 3000);
 };
 
-const sanitizeDisplayName = (value) => {
-  if (!value) return '';
-  // 过滤控制字符和危险字符，允许其他字符（包括中文、表情符号等），限制最大长度
-  return value.replace(/[\x00-\x1F\x7F]/g, '').slice(0, 100);
-};
-
-const sanitizeSearch = (value) => {
-  if (!value) return '';
-  // 搜索框只过滤控制字符，限制最大长度
-  return value.replace(/[\x00-\x1F\x7F]/g, '').slice(0, 200);
-};
-
-// 输入处理函数
+// 输入处理函数（使用统一过滤工具）
 const handleUsernameInput = (value) => {
-  const sanitized = sanitizeUsername(value);
+  const sanitized = filterUsername(value, showFilterWarningToast);
   profileForm.value.username = sanitized;
   // 实时检查用户名可用性
   debouncedCheckUsername();
 };
 
 const handleDisplayNameInput = (value) => {
-  profileForm.value.displayName = sanitizeDisplayName(value);
+  const sanitized = filterDisplayName(value, showFilterWarningToast);
+  profileForm.value.displayName = sanitized;
 };
 
 // 邮箱输入处理（实时检查）
 const handleEmailInput = (value) => {
-  profileForm.value.email = value.slice(0, 100);
+  const sanitized = filterEmail(value, showFilterWarningToast);
+  profileForm.value.email = sanitized;
   // 实时检查邮箱可用性
   debouncedCheckEmail();
 };
