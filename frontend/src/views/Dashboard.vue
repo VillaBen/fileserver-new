@@ -320,6 +320,13 @@
             @keyup.enter="handleConfirmRename" 
           />
         </el-form-item>
+        
+        <transition name="fade">
+          <div v-if="showRenameFilterWarning" class="filter-warning">
+            <el-icon class="warning-icon"><Warning /></el-icon>
+            <span>{{ i18n.t('invalidCharactersRemoved') || '部分字符不支持，已自动过滤' }}</span>
+          </div>
+        </transition>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -1066,9 +1073,10 @@ const handleShare = (file) => {
 };
 
 const showFilterWarning = ref(false);
+const showRenameFilterWarning = ref(false);
 
 // 字符过滤函数 - 白名单+黑名单混合模式
-const sanitizeFilename = (value) => {
+const sanitizeFilename = (value, isRename = false) => {
   if (!value) return '';
   
   const originalLength = value.length;
@@ -1084,9 +1092,10 @@ const sanitizeFilename = (value) => {
   
   // 如果有字符被过滤，显示提示
   if (sanitized.length < originalLength && originalLength > 0) {
-    showFilterWarning.value = true;
+    const warningRef = isRename ? showRenameFilterWarning : showFilterWarning;
+    warningRef.value = true;
     setTimeout(() => {
-      showFilterWarning.value = false;
+      warningRef.value = false;
     }, 3000);
   }
   
@@ -1106,7 +1115,7 @@ const handleFolderNameInput = (value) => {
 
 // 重命名输入处理
 const handleRenameInput = (value) => {
-  renameForm.value.name = sanitizeFilename(value);
+  renameForm.value.name = sanitizeFilename(value, true);
 };
 
 // 搜索输入处理

@@ -621,7 +621,8 @@ const translations = {
     usernameTaken: 'Username is already taken',
     emailAvailable: 'Email is available',
     emailTaken: 'Email is already taken',
-    invalidEmail: 'Invalid email format'
+    invalidEmail: 'Invalid email format',
+    invalidCharactersRemoved: 'Invalid characters have been removed'
   },
   // Error code translations (English)
   errors: {
@@ -1294,7 +1295,8 @@ const translations = {
     usernameTaken: '用户名已被占用',
     emailAvailable: '邮箱可用',
     emailTaken: '邮箱已被占用',
-    invalidEmail: '邮箱格式不正确'
+    invalidEmail: '邮箱格式不正确',
+    invalidCharactersRemoved: '不支持的字符已自动过滤'
   },
   // Error code translations (Chinese)
   errors: {

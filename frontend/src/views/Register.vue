@@ -77,8 +77,8 @@
               <div class="input-wrapper">
                 <span class="input-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                    <circle cx="12" cy="7" r="4"/>
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
                   </svg>
                 </span>
                 <el-input
@@ -87,7 +87,17 @@
                   :placeholder="i18n.t('username')"
                   size="large"
                   @input="handleUsernameInput"
+                  @blur="checkUsernameAvailability"
                 />
+              </div>
+              <div v-if="usernameCheckStatus === 'checking'" class="validation-message checking">
+                <el-icon><Loading /></el-icon> {{ i18n.t('checking') }}
+              </div>
+              <div v-else-if="usernameCheckStatus === 'available'" class="validation-message success">
+                <el-icon><CircleCheck /></el-icon> {{ i18n.t('usernameAvailable') }}
+              </div>
+              <div v-else-if="usernameCheckStatus === 'taken'" class="validation-message error">
+                <el-icon><CircleClose /></el-icon> {{ i18n.t('usernameTaken') }}
               </div>
             </el-form-item>
             
@@ -95,8 +105,8 @@
               <div class="input-wrapper">
                 <span class="input-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                    <polyline points="22,6 12,13 2,6"/>
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
                   </svg>
                 </span>
                 <el-input
@@ -104,7 +114,21 @@
                   type="email"
                   :placeholder="i18n.t('email')"
                   size="large"
+                  @input="handleEmailInput"
+                  @blur="checkEmailAvailability"
                 />
+              </div>
+              <div v-if="emailCheckStatus === 'checking'" class="validation-message checking">
+                <el-icon><Loading /></el-icon> {{ i18n.t('checking') }}
+              </div>
+              <div v-else-if="emailCheckStatus === 'available'" class="validation-message success">
+                <el-icon><CircleCheck /></el-icon> {{ i18n.t('emailAvailable') }}
+              </div>
+              <div v-else-if="emailCheckStatus === 'taken'" class="validation-message error">
+                <el-icon><CircleClose /></el-icon> {{ i18n.t('emailTaken') }}
+              </div>
+              <div v-else-if="emailCheckStatus === 'invalid'" class="validation-message error">
+                <el-icon><CircleClose /></el-icon> {{ i18n.t('invalidEmail') }}
               </div>
             </el-form-item>
             
@@ -242,8 +266,10 @@
 import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { Loading, CircleCheck, CircleClose } from '@element-plus/icons-vue';
 import { useAuthStore } from '../stores/auth';
 import { useI18nStore } from '../stores/i18n';
+import { userAPI } from '../api';
 import Captcha from '../components/Captcha.vue';
 import PasswordStrength from '../components/PasswordStrength.vue';
 import LanguageSelector from '../components/LanguageSelector.vue';
@@ -258,6 +284,14 @@ const isLoading = ref(false);
 const agreeTerms = ref(false);
 const errorMessage = ref('');
 
+// Validation status
+const usernameCheckStatus = ref('idle'); // idle, checking, available, taken
+const emailCheckStatus = ref('idle'); // idle, checking, available, taken, invalid
+
+// Debounce timers
+let usernameCheckTimer = null;
+let emailCheckTimer = null;
+
 const formData = reactive({
   username: '',
   email: '',
@@ -265,6 +299,92 @@ const formData = reactive({
   confirmPassword: '',
   captcha: ''
 });
+
+// 字符过滤函数
+const sanitizeUsername = (value) => {
+  if (!value) return '';
+  // 只允许字母、数字、下划线、连字符
+  return value.replace(/[^a-zA-Z0-9_-]/g, '');
+};
+
+// Check username availability (real-time)
+const checkUsernameAvailability = async () => {
+  const username = formData.username;
+  if (!username) {
+    usernameCheckStatus.value = 'idle';
+    return;
+  }
+  
+  usernameCheckStatus.value = 'checking';
+  try {
+    const response = await userAPI.checkUsername(username);
+    if (response.success) {
+      usernameCheckStatus.value = response.data.available ? 'available' : 'taken';
+    }
+  } catch (error) {
+    console.error('检查用户名失败:', error);
+    usernameCheckStatus.value = 'idle';
+  }
+};
+
+// Debounced username check
+const debouncedCheckUsername = () => {
+  if (usernameCheckTimer) {
+    clearTimeout(usernameCheckTimer);
+  }
+  usernameCheckTimer = setTimeout(() => {
+    checkUsernameAvailability();
+  }, 500);
+};
+
+// Check email availability (real-time)
+const checkEmailAvailability = async () => {
+  const email = formData.email;
+  if (!email) {
+    emailCheckStatus.value = 'idle';
+    return;
+  }
+  
+  emailCheckStatus.value = 'checking';
+  try {
+    const response = await userAPI.checkEmail(email);
+    if (response.success) {
+      if (!response.data.valid) {
+        emailCheckStatus.value = 'invalid';
+      } else {
+        emailCheckStatus.value = response.data.available ? 'available' : 'taken';
+      }
+    }
+  } catch (error) {
+    console.error('检查邮箱失败:', error);
+    emailCheckStatus.value = 'idle';
+  }
+};
+
+// Debounced email check
+const debouncedCheckEmail = () => {
+  if (emailCheckTimer) {
+    clearTimeout(emailCheckTimer);
+  }
+  emailCheckTimer = setTimeout(() => {
+    checkEmailAvailability();
+  }, 500);
+};
+
+// 输入处理函数
+const handleUsernameInput = (value) => {
+  const sanitized = sanitizeUsername(value);
+  formData.username = sanitized;
+  // 实时检查用户名可用性
+  debouncedCheckUsername();
+};
+
+// 邮箱输入处理（实时检查）
+const handleEmailInput = (value) => {
+  formData.email = value;
+  // 实时检查邮箱可用性
+  debouncedCheckEmail();
+};
 
 function onPasswordInput() {}
 
@@ -693,6 +813,26 @@ const handleUsernameInput = (value) => {
 .login-link svg {
   width: 18px;
   height: 18px;
+}
+
+.validation-message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.validation-message.checking {
+  color: var(--el-color-info);
+}
+
+.validation-message.success {
+  color: var(--el-color-success);
+}
+
+.validation-message.error {
+  color: var(--el-color-danger);
 }
 
 /* Responsive */

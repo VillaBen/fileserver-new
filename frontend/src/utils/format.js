@@ -1,9 +1,13 @@
 export function formatFileSize(bytes) {
-  if (bytes === 0 || !bytes) return '0 B';
+  // 确保bytes是有效数字
+  const num = Number(bytes);
+  if (isNaN(num) || num <= 0) return '0 B';
+  
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const i = Math.floor(Math.log(num) / Math.log(k));
+  const safeIndex = Math.min(i, sizes.length - 1); // 防止索引越界
+  return parseFloat((num / Math.pow(k, safeIndex)).toFixed(2)) + ' ' + sizes[safeIndex];
 }
 
 export function formatDate(date) {

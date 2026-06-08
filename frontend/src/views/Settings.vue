@@ -91,6 +91,7 @@
                 v-model="profileForm.email" 
                 :placeholder="i18n.t('yourEmail')"
                 size="large"
+                @input="handleEmailInput"
                 @blur="checkEmailAvailability"
               />
               <div v-if="emailCheckStatus === 'checking'" class="validation-message checking">
@@ -434,7 +435,11 @@ const savingProfile = ref(false);
 const uploadingAvatar = ref(false);
 const avatarUrl = ref('');
 const hasAvatar = computed(() => !!avatarUrl.value);
-const userInitial = computed(() => profileForm.value.displayName?.charAt(0).toUpperCase() || '');
+const userInitial = computed(() => profileForm.value.displayName?.charAt(0).toUpperCase() || (profileForm.value.username?.charAt(0).toUpperCase() || ''));
+
+// Debounce timers
+let usernameCheckTimer = null;
+let emailCheckTimer = null;
 
 // Validation status
 const usernameCheckStatus = ref('idle'); // idle, checking, available, taken
@@ -466,8 +471,13 @@ const storageInfo = ref({
 });
 
 const storageUsagePercent = computed(() => {
-  if (storageInfo.value.total === 0) return 0;
-  return Math.round((storageInfo.value.used / storageInfo.value.total) * 100);
+  // 确保值是有效的数字
+  const used = Number(storageInfo.value.used) || 0;
+  const total = Number(storageInfo.value.total) || 1;
+  if (total === 0) return 0;
+  const percent = Math.round((used / total) * 100);
+  // 确保百分比在合理范围内
+  return Math.min(100, Math.max(0, percent));
 });
 
 const storageProgressColor = computed(() => {
@@ -670,7 +680,7 @@ const validateEmail = (rule, value, callback) => {
   }
 };
 
-// Check username availability
+// Check username availability (real-time)
 const checkUsernameAvailability = async () => {
   const username = profileForm.value.username;
   if (!username || username === originalProfile.value.username) {
@@ -690,7 +700,17 @@ const checkUsernameAvailability = async () => {
   }
 };
 
-// Check email availability
+// Debounced username check
+const debouncedCheckUsername = () => {
+  if (usernameCheckTimer) {
+    clearTimeout(usernameCheckTimer);
+  }
+  usernameCheckTimer = setTimeout(() => {
+    checkUsernameAvailability();
+  }, 500);
+};
+
+// Check email availability (real-time)
 const checkEmailAvailability = async () => {
   const email = profileForm.value.email;
   if (!email || email === originalProfile.value.email) {
@@ -712,6 +732,16 @@ const checkEmailAvailability = async () => {
     console.error('检查邮箱失败:', error);
     emailCheckStatus.value = 'idle';
   }
+};
+
+// Debounced email check
+const debouncedCheckEmail = () => {
+  if (emailCheckTimer) {
+    clearTimeout(emailCheckTimer);
+  }
+  emailCheckTimer = setTimeout(() => {
+    checkEmailAvailability();
+  }, 500);
 };
 
 // Load user profile (moved up)
@@ -943,11 +973,21 @@ const sanitizeSearch = (value) => {
 
 // 输入处理函数
 const handleUsernameInput = (value) => {
-  profileForm.value.username = sanitizeUsername(value);
+  const sanitized = sanitizeUsername(value);
+  profileForm.value.username = sanitized;
+  // 实时检查用户名可用性
+  debouncedCheckUsername();
 };
 
 const handleDisplayNameInput = (value) => {
   profileForm.value.displayName = sanitizeDisplayName(value);
+};
+
+// 邮箱输入处理（实时检查）
+const handleEmailInput = (value) => {
+  profileForm.value.email = value;
+  // 实时检查邮箱可用性
+  debouncedCheckEmail();
 };
 </script>
 
