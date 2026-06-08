@@ -14,10 +14,12 @@ const { v4: uuidv4 } = require('uuid');
  */
 const checkUsername = async (req, res) => {
   try {
+    console.log('[checkUsername] 收到请求，查询参数:', req.query);
     const { username } = req.query;
     const accountId = req.user?.id;
 
     if (!username) {
+      console.log('[checkUsername] 用户名不存在');
       return res.apiSuccess({
         available: false,
         valid: false,
@@ -26,10 +28,12 @@ const checkUsername = async (req, res) => {
       });
     }
 
+    console.log('[checkUsername] 验证用户名:', username);
     // 验证用户名格式
     const validation = validateUsername(username);
     
     if (!validation.valid) {
+      console.log('[checkUsername] 验证失败:', validation.errors);
       return res.apiSuccess({
         available: false,
         valid: false,
@@ -53,7 +57,7 @@ const checkUsername = async (req, res) => {
       username: username
     });
   } catch (error) {
-    console.error('检查用户名错误:', error);
+    console.error('[checkUsername] 检查错误:', error);
     res.apiSuccess({
       available: false,
       valid: false,
@@ -68,10 +72,12 @@ const checkUsername = async (req, res) => {
  */
 const checkEmail = async (req, res) => {
   try {
+    console.log('[checkEmail] 收到请求，查询参数:', req.query);
     const { email } = req.query;
     const accountId = req.user?.id;
 
     if (!email) {
+      console.log('[checkEmail] 邮箱不存在');
       return res.apiSuccess({
         available: false,
         valid: false,
@@ -80,10 +86,12 @@ const checkEmail = async (req, res) => {
       });
     }
 
+    console.log('[checkEmail] 验证邮箱:', email);
     // 验证邮箱格式
     const validation = validateEmail(email, false);
     
     if (!validation.valid) {
+      console.log('[checkEmail] 验证失败:', validation.errors);
       return res.apiSuccess({
         available: false,
         valid: false,
@@ -117,7 +125,7 @@ const checkEmail = async (req, res) => {
       email: email
     });
   } catch (error) {
-    console.error('检查邮箱错误:', error);
+    console.error('[checkEmail] 检查错误:', error);
     res.apiSuccess({
       available: false,
       valid: false,
