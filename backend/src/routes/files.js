@@ -240,10 +240,10 @@ router.get('/stats', async (req, res) => {
 });
 
 // 搜索文件（必须在 /:id 之前定义）
-router.get('/search', async (req, res) => {
+router.post('/search', async (req, res) => {
   try {
     const user = req.user;
-    const { query } = req.query;
+    const { query } = req.body;
 
     if (!query) {
       return res.apiError('搜索关键词不能为空', 'VALIDATION_ERROR');
