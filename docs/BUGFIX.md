@@ -7,6 +7,27 @@
 
 ## 2026-06-08 (最新)
 
+### P0 - i18n.js语法错误修复
+
+**问题描述**：
+前端启动失败，Vite编译报错：`Expected "}" but found ";"`，文件位置：[i18n.js](file:///workspace/frontend/src/stores/i18n.js#L1352)
+
+**问题分析**：
+在添加zh-CN的errors翻译时，缺少了zh-CN对象的闭合括号，导致JSON结构错误，整个前端启动失败。
+
+**修复文件**：
+- [i18n.js (frontend)](file:///workspace/frontend/src/stores/i18n.js)
+
+**修复内容**：
+1. 在errors对象结束后，缺少了zh-CN对象的闭合括号
+2. 在第1352行添加了缺失的 `},` 来正确闭合zh-CN对象
+
+**当前完成度**：100%
+
+---
+
+## 2026-06-08 (之前更新)
+
 ### P1 - 登录页错误消息国际化修复
 
 **问题描述**：
