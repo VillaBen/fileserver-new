@@ -10,7 +10,7 @@ const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 function setupRoutes(app) {
   app.use('/api/auth', authRoutes);
-  app.use('/api/user', requireAuth, userRoutes);
+  app.use('/api/user', userRoutes);  // 用户路由不需要全局认证，check-username和check-email在路由内部处理认证
   app.use('/api/files', requireAuth, fileRoutes);
   app.use('/api/shares', requireAuth, shareRoutes);
   app.use('/api/admin', requireAuth, requireAdmin, adminRoutes);

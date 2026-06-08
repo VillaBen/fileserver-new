@@ -7,8 +7,9 @@ const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 const upload = multer();
 
-router.post('/check-username', requireAuth, userController.checkUsername);
-router.post('/check-email', requireAuth, userController.checkEmail);
+// 注册时检查用户名和邮箱不需要登录
+router.post('/check-username', userController.checkUsername);
+router.post('/check-email', userController.checkEmail);
 router.get('/profile', requireAuth, userController.getProfile);
 router.put('/profile', requireAuth, userController.updateProfile);
 router.get('/storage', requireAuth, userController.getStorageInfo);
