@@ -5,6 +5,159 @@
 
 ---
 
+## 2026-06-08 (最新)
+
+### P1 - 登录页错误消息国际化修复
+
+**问题描述**：
+登录页面当前为英文时，但错误消息显示中文，没有正确使用i18n翻译。
+
+**问题分析**：
+1. i18n翻译结构有问题，错误代码翻译没有正确嵌套在语言对象内
+2. 登录页错误处理逻辑有问题，硬编码了中文错误消息
+
+**修复文件**：
+- [i18n.js (frontend)](file:///workspace/frontend/src/stores/i18n.js)
+- [Login.vue (frontend)](file:///workspace/frontend/src/views/Login.vue)
+
+**修复内容**：
+1. **i18n结构修复**：
+   - 将错误代码翻译从根级别移到对应语言对象内
+   - 英文错误翻译放在 en-US.errors 下
+   - 中文错误翻译放在 zh-CN.errors 下
+   
+2. **登录页错误处理优化**：
+   - 优先使用 i18n.t() 翻译错误代码
+   - 移除硬编码的中文错误消息
+   - 增加中英文双语错误消息兜底
+   
+**当前完成度**：100%
+
+---
+
+### P1 - 所有输入框字符过滤警告提示完善
+
+**问题描述**：
+字符过滤警告提示只在创建文件夹时有显示，其他输入框（用户名、邮箱、重命名等）没有这个提示。
+
+**问题分析**：
+1. 只有Dashboard.vue的创建文件夹对话框有过滤警告
+2. 个人资料页、注册页、登录页、重命名对话框都没有过滤警告
+
+**修复文件**：
+- [Dashboard.vue (frontend)](file:///workspace/frontend/src/views/Dashboard.vue)
+- [Settings.vue (frontend)](file:///workspace/frontend/src/views/Settings.vue)
+- [Register.vue (frontend)](file:///workspace/frontend/src/views/Register.vue)
+- [Login.vue (frontend)](file:///workspace/frontend/src/views/Login.vue)
+
+**修复内容**：
+1. **Dashboard.vue**：
+   - 为重命名对话框也添加了过滤警告提示
+   - 增加 showRenameFilterWarning 状态变量
+   - 修改 sanitizeFilename 支持两种警告提示
+
+2. **Settings.vue**：
+   - 为用户名输入添加字符过滤警告提示
+   - 优化 sanitizeUsername 函数，增加长度限制和警告显示
+   
+3. **Register.vue**：
+   - 为用户名输入添加字符过滤警告提示
+   - 优化 sanitizeUsername 函数，增加长度限制和警告显示
+   
+4. **Login.vue**：
+   - 为用户名输入添加字符过滤警告提示
+   - 优化 sanitizeUsername 函数，增加长度限制和警告显示
+   
+**当前完成度**：100%
+
+---
+
+### P1 - 所有输入框添加长度限制
+
+**问题描述**：
+输入框没有设置输入长度限制，用户可以粘贴很长的字符串，虽然后端有验证，但前端应该有更好的用户体验。
+
+**问题分析**：
+1. 没有使用 maxlength 属性限制输入长度
+2. 没有显示字数统计
+3. 输入法可能会自动填充斗图等特殊内容
+
+**修复文件**：
+- [Login.vue (frontend)](file:///workspace/frontend/src/views/Login.vue)
+- [Register.vue (frontend)](file:///workspace/frontend/src/views/Register.vue)
+- [Settings.vue (frontend)](file:///workspace/frontend/src/views/Settings.vue)
+
+**修复内容**：
+1. **用户名输入**：maxlength="50" + show-word-limit
+2. **邮箱输入**：maxlength="100" + show-word-limit
+3. **密码输入**：maxlength="100" + show-word-limit
+4. **显示名称输入**：maxlength="100" + show-word-limit
+5. 在字符过滤函数中也添加了长度截断逻辑，双重保护
+
+**长度限制规范**：
+- 用户名：3-50 字符
+- 邮箱：≤100 字符
+- 密码：8-128 字符
+- 显示名称：≤100 字符
+
+**当前完成度**：100%
+
+---
+
+### P1 - 所有输入框添加清空按钮
+
+**问题描述**：
+输入框没有清空按钮，用户体验不够好，需要手动全选删除。
+
+**问题分析**：
+Element Plus 的 el-input 组件支持 clearable 属性，只需要启用即可。
+
+**修复文件**：
+- [Login.vue (frontend)](file:///workspace/frontend/src/views/Login.vue)
+- [Register.vue (frontend)](file:///workspace/frontend/src/views/Register.vue)
+- [Settings.vue (frontend)](file:///workspace/frontend/src/views/Settings.vue)
+
+**修复内容**：
+1. 为所有文本输入框添加 clearable 属性
+2. 用户名、邮箱、密码、显示名称等输入框都支持一键清空
+3. 保持与现有 UI 风格一致
+
+**当前完成度**：100%
+
+---
+
+## 2026-06-08 汇总（今日第二次更新）
+
+### ✅ 今日完成的所有修复和功能：
+
+#### 1. 登录页错误消息国际化
+- 修复 i18n 错误代码翻译结构
+- 错误消息根据当前语言正确显示
+
+#### 2. 字符过滤警告提示全面覆盖
+- 登录页、注册页、个人资料页、Dashboard都有过滤警告
+- 当检测到无效字符被过滤时显示黄色警告提示
+- 3秒后自动消失，不影响用户体验
+
+#### 3. 输入框长度限制完善
+- 所有输入框添加 maxlength 限制
+- 显示实时字数统计
+- 防止超长输入
+
+#### 4. 清空按钮添加
+- 所有输入框支持一键清空
+- 提升用户体验
+
+---
+
+### 验证结果
+✅ **字符过滤警告**：所有相关输入框都有警告提示
+✅ **长度限制**：所有输入框都有合理的长度限制和字数统计
+✅ **清空按钮**：所有输入框都支持一键清空
+✅ **错误消息国际化**：登录页错误消息根据语言正确显示
+
+---
+
 ## 2026-06-08
 
 ### P0 - 个人资料页邮箱验证400错误修复
