@@ -1349,7 +1349,9 @@ const translations = {
     FILE_NOT_FOUND: '文件未找到',
     ACCESS_DENIED: '访问被拒绝'
   }
+  },
 };
+
 
 export const useI18nStore = defineStore('i18n', () => {
   const currentLocale = ref('en-US');
