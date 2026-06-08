@@ -999,7 +999,7 @@ const handlePreview = async (file) => {
 const isImageFile = (file) => {
     if (!file?.name) return false;
     const ext = file.name.toLowerCase().split('.').pop();
-    return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tiff', 'tif'].includes(ext);
+    return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext);
   };
 
   const isPDFFile = (file) => {
@@ -1010,25 +1010,19 @@ const isImageFile = (file) => {
   const isVideoFile = (file) => {
     if (!file?.name) return false;
     const ext = file.name.toLowerCase().split('.').pop();
-    return ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'flv'].includes(ext);
+    return ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'].includes(ext);
   };
 
   const isAudioFile = (file) => {
     if (!file?.name) return false;
     const ext = file.name.toLowerCase().split('.').pop();
-    return ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'].includes(ext);
+    return ['mp3', 'wav', 'ogg', 'flac', 'aac'].includes(ext);
   };
 
   const isTextFile = (file) => {
     if (!file?.name) return false;
     const ext = file.name.toLowerCase().split('.').pop();
-    return [
-      'txt', 'md', 'json', 'xml', 'html', 'htm', 'css', 'js', 'ts', 'jsx', 'tsx',
-      'py', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'go', 'rs', 'rb', 'php',
-      'sh', 'bat', 'cmd', 'ps1', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf',
-      'log', 'csv', 'sql', 'graphql', 'vue', 'svelte', 'swift', 'kt', 'kts',
-      'dart', 'lua', 'perl', 'r', 'scala', 'groovy', 'coffee', 'less', 'scss', 'sass'
-    ].includes(ext);
+    return ['txt', 'md', 'json', 'xml', 'csv'].includes(ext);
   };
 
 const downloadPreviewFile = async () => {
