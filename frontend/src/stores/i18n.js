@@ -622,10 +622,9 @@ const translations = {
     emailAvailable: 'Email is available',
     emailTaken: 'Email is already taken',
     invalidEmail: 'Invalid email format',
-    invalidCharactersRemoved: 'Invalid characters have been removed'
-  },
-  // Error code translations (English)
-  errors: {
+    invalidCharactersRemoved: 'Invalid characters have been removed',
+    // Error code translations (English)
+    errors: {
     VALIDATION_ERROR: 'Validation error',
     INVALID_CAPTCHA: 'Invalid captcha',
     USERNAME_EXISTS: 'Username already exists',
@@ -1296,10 +1295,9 @@ const translations = {
     emailAvailable: '邮箱可用',
     emailTaken: '邮箱已被占用',
     invalidEmail: '邮箱格式不正确',
-    invalidCharactersRemoved: '不支持的字符已自动过滤'
-  },
-  // Error code translations (Chinese)
-  errors: {
+    invalidCharactersRemoved: '不支持的字符已自动过滤',
+    // Error code translations (Chinese)
+    errors: {
     VALIDATION_ERROR: '验证错误',
     INVALID_CAPTCHA: '验证码无效',
     USERNAME_EXISTS: '用户名已存在',

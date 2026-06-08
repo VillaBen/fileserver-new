@@ -84,9 +84,25 @@
                     type="text"
                     :placeholder="i18n.t('username')"
                     size="large"
+                    maxlength="50"
+                    show-word-limit
+                    clearable
                     @input="handleUsernameInput"
                   />
                 </div>
+              </el-form-item>
+              
+              <el-form-item>
+                <transition name="fade">
+                  <div v-if="showFilterWarning" class="filter-warning">
+                    <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="8" x2="12" y2="12"/>
+                      <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span>{{ i18n.t('invalidCharactersRemoved') || 'Invalid characters removed' }}</span>
+                  </div>
+                </transition>
               </el-form-item>
               
               <el-form-item prop="password">
@@ -103,6 +119,9 @@
                     show-password
                     :placeholder="i18n.t('password')"
                     size="large"
+                    maxlength="100"
+                    show-word-limit
+                    clearable
                     @keyup.enter="handleLogin"
                   />
                 </div>
@@ -226,6 +245,7 @@ const isLoading = ref(false);
 const twoFactorRequired = ref(false);
 const twoFactorCode = ref('');
 const errorMessage = ref('');
+const showFilterWarning = ref(false);
 
 const formData = reactive({
   username: '',
@@ -261,28 +281,23 @@ async function handleLogin() {
     // 根据错误代码显示详细的错误消息
     let msg = '';
     
-    // 优先使用后端返回的错误消息
-    if (error?.error) {
-      msg = error.error;
+    // 如果有错误代码，优先使用 i18n 翻译
+    if (error?.errorCode) {
+      const errorKey = `errors.${error.errorCode}`;
+      const translated = i18n.t(errorKey);
+      if (translated !== errorKey) {
+        msg = translated;
+      }
     }
     
-    // 如果没有后端消息，尝试使用错误代码翻译
-    if (!msg && error?.errorCode) {
-      const errorMessages = {
-        'USER_NOT_FOUND': '用户名不存在，请检查输入或注册新账户',
-        'INVALID_PASSWORD': '密码错误，请重新输入',
-        'ACCOUNT_DISABLED': '账户已被禁用，请联系管理员',
-        'ACCOUNT_LOCKED': '账户已被锁定，请稍后再试',
-        'VALIDATION_ERROR': '用户名或密码不能为空',
-        'INVALID_CREDENTIALS': '用户名或密码错误',
-        'LOGIN_ERROR': '登录失败，请稍后重试'
-      };
-      msg = errorMessages[error.errorCode] || i18n.t('loginFailed') || '登录失败';
+    // 优先使用后端返回的错误消息
+    if (!msg && error?.error) {
+      msg = error.error;
     }
     
     // 最后的兜底
     if (!msg) {
-      msg = i18n.t('loginFailed') || '登录失败，请稍后重试';
+      msg = i18n.t('loginFailed') || 'Login failed';
     }
     
     errorMessage.value = msg;
@@ -319,14 +334,26 @@ async function cancelTwoFactor() {
 // 字符过滤函数
 const sanitizeUsername = (value) => {
   if (!value) return '';
-  // 只允许字母、数字、下划线、连字符
-  return value.replace(/[^a-zA-Z0-9_-]/g, '');
+  const originalLength = value.length;
+  // 只允许字母、数字、下划线、连字符，限制最大长度
+  let sanitized = value.replace(/[^a-zA-Z0-9_-]/g, '');
+  sanitized = sanitized.slice(0, 50);
+  
+  // 如果有字符被过滤或截断，显示提示
+  if (sanitized.length < originalLength && originalLength > 0) {
+    showFilterWarning.value = true;
+    setTimeout(() => {
+      showFilterWarning.value = false;
+    }, 3000);
+  }
+  
+  return sanitized;
 };
 
 const sanitizeTwoFactorCode = (value) => {
   if (!value) return '';
-  // 只允许数字
-  return value.replace(/[^0-9]/g, '');
+  // 只允许数字，限制最大长度
+  return value.replace(/[^0-9]/g, '').slice(0, 6);
 };
 
 // 输入处理函数
@@ -336,6 +363,15 @@ const handleUsernameInput = (value) => {
 
 const handleTwoFactorInput = (value) => {
   twoFactorCode.value = sanitizeTwoFactorCode(value);
+};
+
+// 清空输入框
+const clearUsername = () => {
+  formData.username = '';
+};
+
+const clearPassword = () => {
+  formData.password = '';
 };</script>
 
 <style scoped>
@@ -572,6 +608,34 @@ const handleTwoFactorInput = (value) => {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+}
+
+.filter-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fffbeb;
+  color: #d97706;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #fed7aa;
+  font-size: 14px;
+}
+
+.filter-warning .warning-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 .form-links {

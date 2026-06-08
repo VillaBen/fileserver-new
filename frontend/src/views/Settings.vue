@@ -55,6 +55,9 @@
                 v-model="profileForm.username" 
                 :placeholder="i18n.t('enterUsername')"
                 size="large"
+                maxlength="50"
+                show-word-limit
+                clearable
                 @input="handleUsernameInput"
                 @blur="checkUsernameAvailability"
               />
@@ -69,6 +72,13 @@
               </div>
             </el-form-item>
             
+            <el-form-item v-if="showFilterWarning">
+              <div class="filter-warning">
+                <el-icon class="warning-icon"><Warning /></el-icon>
+                <span>{{ i18n.t('invalidCharactersRemoved') }}</span>
+              </div>
+            </el-form-item>
+            
             <el-form-item 
               :label="i18n.t('displayName')"
             >
@@ -76,6 +86,9 @@
                 v-model="profileForm.displayName" 
                 :placeholder="i18n.t('yourName')"
                 size="large"
+                maxlength="100"
+                show-word-limit
+                clearable
                 @input="handleDisplayNameInput"
               />
             </el-form-item>
@@ -91,6 +104,9 @@
                 v-model="profileForm.email" 
                 :placeholder="i18n.t('yourEmail')"
                 size="large"
+                maxlength="100"
+                show-word-limit
+                clearable
                 @input="handleEmailInput"
                 @blur="checkEmailAvailability"
               />
@@ -400,7 +416,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import { User, Lock, Sunny, Moon, Monitor, Guide, Upload, Delete, CircleCheck, DocumentCopy, Folder, Loading, CircleClose } from '@element-plus/icons-vue';
+import { User, Lock, Sunny, Moon, Monitor, Guide, Upload, Delete, CircleCheck, DocumentCopy, Folder, Loading, CircleClose, Warning } from '@element-plus/icons-vue';
 import { useI18nStore } from '../stores/i18n';
 import { useAuthStore } from '../stores/auth';
 import { userAPI } from '../api';
@@ -444,6 +460,7 @@ let emailCheckTimer = null;
 // Validation status
 const usernameCheckStatus = ref('idle'); // idle, checking, available, taken
 const emailCheckStatus = ref('idle'); // idle, checking, available, taken, invalid
+const showFilterWarning = ref(false);
 
 // Password form
 const passwordForm = ref({
@@ -955,20 +972,32 @@ const setTheme = (newTheme) => {
 // 字符过滤函数
 const sanitizeUsername = (value) => {
   if (!value) return '';
-  // 只允许字母、数字、下划线、连字符
-  return value.replace(/[^a-zA-Z0-9_-]/g, '');
+  const originalLength = value.length;
+  // 只允许字母、数字、下划线、连字符，限制最大长度
+  let sanitized = value.replace(/[^a-zA-Z0-9_-]/g, '');
+  sanitized = sanitized.slice(0, 50);
+  
+  // 如果有字符被过滤或截断，显示提示
+  if (sanitized.length < originalLength && originalLength > 0) {
+    showFilterWarning.value = true;
+    setTimeout(() => {
+      showFilterWarning.value = false;
+    }, 3000);
+  }
+  
+  return sanitized;
 };
 
 const sanitizeDisplayName = (value) => {
   if (!value) return '';
-  // 过滤控制字符和危险字符，允许其他字符（包括中文、表情符号等）
-  return value.replace(/[\x00-\x1F\x7F]/g, '');
+  // 过滤控制字符和危险字符，允许其他字符（包括中文、表情符号等），限制最大长度
+  return value.replace(/[\x00-\x1F\x7F]/g, '').slice(0, 100);
 };
 
 const sanitizeSearch = (value) => {
   if (!value) return '';
-  // 搜索框只过滤控制字符
-  return value.replace(/[\x00-\x1F\x7F]/g, '');
+  // 搜索框只过滤控制字符，限制最大长度
+  return value.replace(/[\x00-\x1F\x7F]/g, '').slice(0, 200);
 };
 
 // 输入处理函数
@@ -985,7 +1014,7 @@ const handleDisplayNameInput = (value) => {
 
 // 邮箱输入处理（实时检查）
 const handleEmailInput = (value) => {
-  profileForm.value.email = value;
+  profileForm.value.email = value.slice(0, 100);
   // 实时检查邮箱可用性
   debouncedCheckEmail();
 };
@@ -1014,6 +1043,22 @@ const handleEmailInput = (value) => {
 
 .validation-message.error {
   color: var(--el-color-danger);
+}
+
+.filter-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fffbeb;
+  color: #d97706;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #fed7aa;
+  font-size: 14px;
+}
+
+.filter-warning .warning-icon {
+  flex-shrink: 0;
 }
 
 .page-header {

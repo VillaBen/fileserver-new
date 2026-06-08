@@ -86,6 +86,9 @@
                   type="text"
                   :placeholder="i18n.t('username')"
                   size="large"
+                  maxlength="50"
+                  show-word-limit
+                  clearable
                   @input="handleUsernameInput"
                   @blur="checkUsernameAvailability"
                 />
@@ -98,6 +101,13 @@
               </div>
               <div v-else-if="usernameCheckStatus === 'taken'" class="validation-message error">
                 <el-icon><CircleClose /></el-icon> {{ i18n.t('usernameTaken') }}
+              </div>
+            </el-form-item>
+            
+            <el-form-item v-if="showFilterWarning">
+              <div class="filter-warning">
+                <el-icon class="warning-icon"><Warning /></el-icon>
+                <span>{{ i18n.t('invalidCharactersRemoved') }}</span>
               </div>
             </el-form-item>
             
@@ -114,6 +124,9 @@
                   type="email"
                   :placeholder="i18n.t('email')"
                   size="large"
+                  maxlength="100"
+                  show-word-limit
+                  clearable
                   @input="handleEmailInput"
                   @blur="checkEmailAvailability"
                 />
@@ -146,6 +159,9 @@
                   show-password
                   :placeholder="i18n.t('password')"
                   size="large"
+                  maxlength="100"
+                  show-word-limit
+                  clearable
                   @input="onPasswordInput"
                 />
               </div>
@@ -167,6 +183,9 @@
                   show-password
                   :placeholder="i18n.t('confirmPassword')"
                   size="large"
+                  maxlength="100"
+                  show-word-limit
+                  clearable
                 />
               </div>
               <div v-if="formData.password || formData.confirmPassword" class="match-indicator">
@@ -266,7 +285,7 @@
 import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { Loading, CircleCheck, CircleClose } from '@element-plus/icons-vue';
+import { Loading, CircleCheck, CircleClose, Warning } from '@element-plus/icons-vue';
 import { useAuthStore } from '../stores/auth';
 import { useI18nStore } from '../stores/i18n';
 import { userAPI } from '../api';
@@ -287,6 +306,7 @@ const errorMessage = ref('');
 // Validation status
 const usernameCheckStatus = ref('idle'); // idle, checking, available, taken
 const emailCheckStatus = ref('idle'); // idle, checking, available, taken, invalid
+const showFilterWarning = ref(false);
 
 // Debounce timers
 let usernameCheckTimer = null;
@@ -303,8 +323,20 @@ const formData = reactive({
 // 字符过滤函数
 const sanitizeUsername = (value) => {
   if (!value) return '';
-  // 只允许字母、数字、下划线、连字符
-  return value.replace(/[^a-zA-Z0-9_-]/g, '');
+  const originalLength = value.length;
+  // 只允许字母、数字、下划线、连字符，限制最大长度
+  let sanitized = value.replace(/[^a-zA-Z0-9_-]/g, '');
+  sanitized = sanitized.slice(0, 50);
+  
+  // 如果有字符被过滤或截断，显示提示
+  if (sanitized.length < originalLength && originalLength > 0) {
+    showFilterWarning.value = true;
+    setTimeout(() => {
+      showFilterWarning.value = false;
+    }, 3000);
+  }
+  
+  return sanitized;
 };
 
 // Check username availability (real-time)
@@ -381,7 +413,7 @@ const handleUsernameInput = (value) => {
 
 // 邮箱输入处理（实时检查）
 const handleEmailInput = (value) => {
-  formData.email = value;
+  formData.email = value.slice(0, 100);
   // 实时检查邮箱可用性
   debouncedCheckEmail();
 };
@@ -445,18 +477,6 @@ async function handleRegister() {
     isLoading.value = false;
   }
 }
-
-// 字符过滤函数
-const sanitizeUsername = (value) => {
-  if (!value) return '';
-  // 只允许字母、数字、下划线、连字符
-  return value.replace(/[^a-zA-Z0-9_-]/g, '');
-};
-
-// 输入处理函数
-const handleUsernameInput = (value) => {
-  formData.username = sanitizeUsername(value);
-};
 </script>
 
 <style scoped>
@@ -833,6 +853,22 @@ const handleUsernameInput = (value) => {
 
 .validation-message.error {
   color: var(--el-color-danger);
+}
+
+.filter-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fffbeb;
+  color: #d97706;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #fed7aa;
+  font-size: 14px;
+}
+
+.filter-warning .warning-icon {
+  flex-shrink: 0;
 }
 
 /* Responsive */
