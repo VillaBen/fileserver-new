@@ -12,7 +12,7 @@
           prefix-icon="Search"
           clearable
           class="search-input"
-          @input="handleSearch"
+          @input="handleSearchInput"
         />
         <el-button type="primary" @click="loadUsers">
           <el-icon><Refresh /></el-icon>
@@ -295,6 +295,20 @@ const confirmDelete = async () => {
   } finally {
     deleting.value = false;
   }
+};
+
+// 字符过滤函数
+const sanitizeSearch = (value) => {
+  if (!value) return '';
+  // 搜索框只过滤控制字符
+  return value.replace(/[\x00-\x1F\x7F]/g, '');
+};
+
+const handleSearchInput = (value) => {
+  searchQuery.value = sanitizeSearch(value);
+  // 输入时自动触发搜索
+  pagination.value.page = 1;
+  loadUsers();
 };
 </script>
 

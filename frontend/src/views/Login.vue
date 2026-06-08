@@ -84,6 +84,7 @@
                     type="text"
                     :placeholder="i18n.t('username')"
                     size="large"
+                    @input="handleUsernameInput"
                   />
                 </div>
               </el-form-item>
@@ -180,6 +181,7 @@
                   size="large"
                   maxlength="6"
                   class="two-factor-input"
+                  @input="handleTwoFactorInput"
                   @keyup.enter="verifyTwoFactor"
                 />
               </el-form-item>
@@ -301,12 +303,32 @@ async function verifyTwoFactor() {
   }
 }
 
-function cancelTwoFactor() {
+async function cancelTwoFactor() {
   twoFactorRequired.value = false;
   twoFactorCode.value = '';
-  errorMessage.value = '';
 }
-</script>
+
+// 字符过滤函数
+const sanitizeUsername = (value) => {
+  if (!value) return '';
+  // 只允许字母、数字、下划线、连字符
+  return value.replace(/[^a-zA-Z0-9_-]/g, '');
+};
+
+const sanitizeTwoFactorCode = (value) => {
+  if (!value) return '';
+  // 只允许数字
+  return value.replace(/[^0-9]/g, '');
+};
+
+// 输入处理函数
+const handleUsernameInput = (value) => {
+  formData.username = sanitizeUsername(value);
+};
+
+const handleTwoFactorInput = (value) => {
+  twoFactorCode.value = sanitizeTwoFactorCode(value);
+};</script>
 
 <style scoped>
 .login-page {

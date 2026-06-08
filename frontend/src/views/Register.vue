@@ -86,6 +86,7 @@
                   type="text"
                   :placeholder="i18n.t('username')"
                   size="large"
+                  @input="handleUsernameInput"
                 />
               </div>
             </el-form-item>
@@ -324,6 +325,18 @@ async function handleRegister() {
     isLoading.value = false;
   }
 }
+
+// 字符过滤函数
+const sanitizeUsername = (value) => {
+  if (!value) return '';
+  // 只允许字母、数字、下划线、连字符
+  return value.replace(/[^a-zA-Z0-9_-]/g, '');
+};
+
+// 输入处理函数
+const handleUsernameInput = (value) => {
+  formData.username = sanitizeUsername(value);
+};
 </script>
 
 <style scoped>

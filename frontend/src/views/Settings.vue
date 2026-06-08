@@ -55,6 +55,7 @@
                 v-model="profileForm.username" 
                 :placeholder="i18n.t('enterUsername')"
                 size="large"
+                @input="handleUsernameInput"
                 @blur="checkUsernameAvailability"
               />
               <div v-if="usernameCheckStatus === 'checking'" class="validation-message checking">
@@ -75,6 +76,7 @@
                 v-model="profileForm.displayName" 
                 :placeholder="i18n.t('yourName')"
                 size="large"
+                @input="handleDisplayNameInput"
               />
             </el-form-item>
             
@@ -918,6 +920,34 @@ const changePassword = async () => {
 const setTheme = (newTheme) => {
   i18n.setTheme(newTheme);
   toast.success(i18n.t('themeUpdated'));
+};
+
+// 字符过滤函数
+const sanitizeUsername = (value) => {
+  if (!value) return '';
+  // 只允许字母、数字、下划线、连字符
+  return value.replace(/[^a-zA-Z0-9_-]/g, '');
+};
+
+const sanitizeDisplayName = (value) => {
+  if (!value) return '';
+  // 过滤控制字符和危险字符，允许其他字符（包括中文、表情符号等）
+  return value.replace(/[\x00-\x1F\x7F]/g, '');
+};
+
+const sanitizeSearch = (value) => {
+  if (!value) return '';
+  // 搜索框只过滤控制字符
+  return value.replace(/[\x00-\x1F\x7F]/g, '');
+};
+
+// 输入处理函数
+const handleUsernameInput = (value) => {
+  profileForm.value.username = sanitizeUsername(value);
+};
+
+const handleDisplayNameInput = (value) => {
+  profileForm.value.displayName = sanitizeDisplayName(value);
 };
 </script>
 
