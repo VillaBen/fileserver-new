@@ -235,7 +235,7 @@ const formData = reactive({
 
 async function handleLogin() {
   if (!formData.username || !formData.password) {
-    ElMessage.warning(i18n.t('requiredField'));
+    errorMessage.value = i18n.t('usernameOrPasswordRequired') || '用户名或密码不能为空';
     return;
   }
   
@@ -252,29 +252,37 @@ async function handleLogin() {
     if (user.twoFactorRequired) {
       twoFactorRequired.value = true;
     } else {
-      ElMessage.success(i18n.t('loginSuccess'));
+      ElMessage.success(i18n.t('loginSuccess') || '登录成功');
       router.push('/dashboard');
     }
   } catch (error) {
     console.log('Login error:', error);
     
-    // Try to get a detailed error message
+    // 根据错误代码显示详细的错误消息
     let msg = '';
     
-    if (error?.errorCode) {
-      // Try to get the i18n translation for the error code
-      const i18nKey = `errors.${error.errorCode}`;
-      const translated = i18n.t(i18nKey);
-      if (translated !== i18nKey) {
-        msg = translated;
-      }
+    // 优先使用后端返回的错误消息
+    if (error?.error) {
+      msg = error.error;
     }
     
-    // Fallback options
-    if (!msg && error?.error) {
-      msg = error.error;
-    } else if (!msg) {
-      msg = i18n.t('loginFailed');
+    // 如果没有后端消息，尝试使用错误代码翻译
+    if (!msg && error?.errorCode) {
+      const errorMessages = {
+        'USER_NOT_FOUND': '用户名不存在，请检查输入或注册新账户',
+        'INVALID_PASSWORD': '密码错误，请重新输入',
+        'ACCOUNT_DISABLED': '账户已被禁用，请联系管理员',
+        'ACCOUNT_LOCKED': '账户已被锁定，请稍后再试',
+        'VALIDATION_ERROR': '用户名或密码不能为空',
+        'INVALID_CREDENTIALS': '用户名或密码错误',
+        'LOGIN_ERROR': '登录失败，请稍后重试'
+      };
+      msg = errorMessages[error.errorCode] || i18n.t('loginFailed') || '登录失败';
+    }
+    
+    // 最后的兜底
+    if (!msg) {
+      msg = i18n.t('loginFailed') || '登录失败，请稍后重试';
     }
     
     errorMessage.value = msg;

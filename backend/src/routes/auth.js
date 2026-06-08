@@ -135,7 +135,7 @@ router.post('/login', async (req, res) => {
     const { username, password, captchaId, captchaCode } = req.body;
 
     if (!username || !password) {
-      return res.apiError('Username and password cannot be empty', 'VALIDATION_ERROR');
+      return res.apiError('用户名或密码不能为空', 'VALIDATION_ERROR');
     }
 
     // 查找用户
@@ -145,23 +145,28 @@ router.post('/login', async (req, res) => {
     );
 
     if (!user) {
-      return res.apiError('Invalid username or password', 'INVALID_CREDENTIALS');
+      return res.apiError('用户名不存在', 'USER_NOT_FOUND');
     }
 
     // 检查账户状态
     if (user.status === 0) {
-      return res.apiError('Account has been disabled', 'ACCOUNT_DISABLED');
+      return res.apiError('账户已被禁用，请联系管理员', 'ACCOUNT_DISABLED');
     }
 
     // 检查是否被锁定
     if (user.locked_until && new Date(user.locked_until) > new Date()) {
-      return res.apiError('Account is locked, please try again later', 'ACCOUNT_LOCKED');
+      const remainingMinutes = Math.ceil((new Date(user.locked_until) - new Date()) / 60000);
+      return res.apiError(`账户已被锁定，请 ${remainingMinutes} 分钟后再试`, 'ACCOUNT_LOCKED');
     }
 
     // 验证密码
     const isValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isValid) {
+      // 获取当前失败次数
+      const currentAttempts = (user.failed_login_attempts || 0) + 1;
+      const remainingAttempts = Math.max(0, 5 - currentAttempts);
+      
       // 增加失败尝试次数
       await db.asyncRun(
         `UPDATE accounts 
@@ -173,7 +178,12 @@ router.post('/login', async (req, res) => {
          WHERE id = ?`,
         [user.id]
       );
-      return res.apiError('Invalid username or password', 'INVALID_CREDENTIALS');
+      
+      if (remainingAttempts > 0) {
+        return res.apiError(`密码错误，还剩 ${remainingAttempts} 次尝试机会`, 'INVALID_PASSWORD');
+      } else {
+        return res.apiError('密码错误次数过多，账户已被锁定15分钟', 'ACCOUNT_LOCKED');
+      }
     }
 
     // 重置失败尝试
@@ -220,7 +230,7 @@ router.post('/login', async (req, res) => {
     res.apiSuccess(userData, '登录成功');
   } catch (error) {
     console.error('登录错误:', error);
-    res.apiError('登录失败', 'LOGIN_ERROR');
+    res.apiError('登录失败，请稍后重试', 'LOGIN_ERROR');
   }
 });
 

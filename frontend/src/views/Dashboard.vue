@@ -293,6 +293,13 @@
             @keyup.enter="handleCreateFolder" 
           />
         </el-form-item>
+        
+        <transition name="fade">
+          <div v-if="showFilterWarning" class="filter-warning">
+            <el-icon class="warning-icon"><Warning /></el-icon>
+            <span>{{ i18n.t('invalidCharactersRemoved') || '部分字符不支持，已自动过滤' }}</span>
+          </div>
+        </transition>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -1058,9 +1065,13 @@ const handleShare = (file) => {
   showShareDialog.value = true;
 };
 
+const showFilterWarning = ref(false);
+
 // 字符过滤函数 - 白名单+黑名单混合模式
 const sanitizeFilename = (value) => {
   if (!value) return '';
+  
+  const originalLength = value.length;
   
   // 首先移除emoji和特殊装饰字符
   let sanitized = value.replace(/[\u{1F000}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F300}-\u{1F6FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{25A0}-\u{25FF}\u{FE00}-\u{FE0F}\u{E000}-\u{F8FF}\u{2000}-\u{200F}\u{2028}-\u{202F}\u{2060}-\u{206F}\u{FEFF}\u{FFF0}-\u{FFFF}]/gu, '');
@@ -1070,6 +1081,14 @@ const sanitizeFilename = (value) => {
   
   // 然后只允许白名单字符：中文、英文、数字和英文标点
   sanitized = sanitized.replace(/[^\u4e00-\u9fffa-zA-Z0-9 _\-\.,()\[\]{}&'@!#$%^+=;`~]/g, '');
+  
+  // 如果有字符被过滤，显示提示
+  if (sanitized.length < originalLength && originalLength > 0) {
+    showFilterWarning.value = true;
+    setTimeout(() => {
+      showFilterWarning.value = false;
+    }, 3000);
+  }
   
   return sanitized;
 };
@@ -1436,5 +1455,32 @@ const copyShareLink = () => {
     max-width: none;
     width: 100%;
   }
+}
+
+.filter-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--el-color-warning-light-9);
+  border: 1px solid var(--el-color-warning-light-5);
+  border-radius: 8px;
+  color: var(--el-color-warning);
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.filter-warning .warning-icon {
+  font-size: 16px;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
