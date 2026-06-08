@@ -23,13 +23,13 @@
           {{ i18n.t('move') }}
         </el-button>
         <el-input
-          v-model="searchQuery"
-          :placeholder="i18n.t('searchFiles')"
-          prefix-icon="Search"
-          clearable
-          class="search-input"
-          @input="handleSearch"
-        />
+            v-model="searchQuery"
+            :placeholder="i18n.t('searchFiles')"
+            prefix-icon="Search"
+            clearable
+            class="search-input"
+            @input="handleSearchInput"
+          />
         <div class="sort-options">
           <el-select 
             v-model="sortBy" 
@@ -289,6 +289,7 @@
           <el-input 
             v-model="newFolder.name" 
             :placeholder="i18n.t('enterFolderName')" 
+            @input="handleFolderNameInput"
             @keyup.enter="handleCreateFolder" 
           />
         </el-form-item>
@@ -308,6 +309,7 @@
           <el-input 
             v-model="renameForm.name" 
             :placeholder="i18n.t('enterNewName')" 
+            @input="handleRenameInput"
             @keyup.enter="handleConfirmRename" 
           />
         </el-form-item>
@@ -1054,6 +1056,35 @@ const handleShare = (file) => {
     password: ''
   };
   showShareDialog.value = true;
+};
+
+// 字符过滤函数
+const sanitizeFilename = (value) => {
+  if (!value) return '';
+  // 只过滤掉真正有安全风险的字符：< > : " / \ | ? *
+  // 允许中文、字母、数字、空格、下划线、连字符、emoji等
+  return value.replace(/[<>:"/\\|?*]/g, '');
+};
+
+const sanitizeSearch = (value) => {
+  if (!value) return '';
+  // 搜索框允许更多字符，只过滤控制字符
+  return value.replace(/[\x00-\x1F\x7F]/g, '');
+};
+
+// 文件夹名输入处理
+const handleFolderNameInput = (value) => {
+  newFolder.value.name = sanitizeFilename(value);
+};
+
+// 重命名输入处理
+const handleRenameInput = (value) => {
+  renameForm.value.name = sanitizeFilename(value);
+};
+
+// 搜索输入处理
+const handleSearchInput = (value) => {
+  searchQuery.value = sanitizeSearch(value);
 };
 
 const handleShareConfirm = async () => {
