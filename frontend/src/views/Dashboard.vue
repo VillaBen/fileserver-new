@@ -489,6 +489,7 @@ import { useAuthStore } from '@/stores/auth';
 import { filesAPI } from '@/api';
 import { toast } from '@/utils/toast';
 import { formatFileSize, formatDate } from '@/utils/format';
+import { filterSearch, filterFolderName } from '@/utils/inputFilter';
 import FileCard from '@/components/FileCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
@@ -1075,52 +1076,37 @@ const handleShare = (file) => {
 const showFilterWarning = ref(false);
 const showRenameFilterWarning = ref(false);
 
-// 字符过滤函数 - 白名单+黑名单混合模式
-const sanitizeFilename = (value, isRename = false) => {
-  if (!value) return '';
-  
-  const originalLength = value.length;
-  
-  // 首先移除emoji和特殊装饰字符
-  let sanitized = value.replace(/[\u{1F000}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F300}-\u{1F6FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{25A0}-\u{25FF}\u{FE00}-\u{FE0F}\u{E000}-\u{F8FF}\u{2000}-\u{200F}\u{2028}-\u{202F}\u{2060}-\u{206F}\u{FEFF}\u{FFF0}-\u{FFFF}]/gu, '');
-  
-  // 移除中文标点符号（），【】、《》""''、，。！？；：……—
-  sanitized = sanitized.replace(/[（）【】《》""''、，。！？；：……—]/g, '');
-  
-  // 然后只允许白名单字符：中文、英文、数字和英文标点
-  sanitized = sanitized.replace(/[^\u4e00-\u9fffa-zA-Z0-9 _\-\.,()\[\]{}&'@!#$%^+=;`~]/g, '');
-  
-  // 如果有字符被过滤，显示提示
-  if (sanitized.length < originalLength && originalLength > 0) {
-    const warningRef = isRename ? showRenameFilterWarning : showFilterWarning;
-    warningRef.value = true;
-    setTimeout(() => {
-      warningRef.value = false;
-    }, 3000);
-  }
-  
-  return sanitized;
+// 显示过滤警告提示
+const showFolderFilterWarning = () => {
+  showFilterWarning.value = true;
+  setTimeout(() => {
+    showFilterWarning.value = false;
+  }, 3000);
 };
 
-const sanitizeSearch = (value) => {
-  if (!value) return '';
-  // 搜索框允许更多字符，只过滤控制字符
-  return value.replace(/[\x00-\x1F\x7F]/g, '');
+const showRenameFilterWarningToast = () => {
+  showRenameFilterWarning.value = true;
+  setTimeout(() => {
+    showRenameFilterWarning.value = false;
+  }, 3000);
 };
 
-// 文件夹名输入处理
+// 文件夹名输入处理（使用统一过滤工具）
 const handleFolderNameInput = (value) => {
-  newFolder.value.name = sanitizeFilename(value);
+  const sanitized = filterFolderName(value, showFolderFilterWarning);
+  newFolder.value.name = sanitized;
 };
 
-// 重命名输入处理
+// 重命名输入处理（使用统一过滤工具）
 const handleRenameInput = (value) => {
-  renameForm.value.name = sanitizeFilename(value, true);
+  const sanitized = filterFolderName(value, showRenameFilterWarningToast);
+  renameForm.value.name = sanitized;
 };
 
-// 搜索输入处理
+// 搜索输入处理（使用统一过滤工具）
 const handleSearchInput = (value) => {
-  searchQuery.value = sanitizeSearch(value);
+  const sanitized = filterSearch(value);
+  searchQuery.value = sanitized;
 };
 
 const handleShareConfirm = async () => {

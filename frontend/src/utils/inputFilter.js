@@ -22,7 +22,7 @@ export const FILTER_RULES = {
     maxLength: 100
   },
   SEARCH: {
-    pattern: /[<>"'/\\|?*]/g, // 搜索框的限制字符
+    pattern: /[<>"'/\\|?*\u{1F000}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F300}-\u{1F6FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{25A0}-\u{25FF}\u{FE00}-\u{FE0F}\u{E000}-\u{F8FF}\u{2000}-\u{200F}\u{2028}-\u{202F}\u{2060}-\u{206F}\u{FEFF}\u{FFF0}-\u{FFFF}]/gu, // 搜索框的限制字符（包括emoji）
     maxLength: 100
   },
   PASSWORD: {
