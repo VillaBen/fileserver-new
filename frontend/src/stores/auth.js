@@ -185,13 +185,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
+    // 先清除本地状态，确保立即生效
+    user.value = null;
+    saveToStorage();
+    
+    // 然后尝试通知服务器
     try {
       await authAPI.logout();
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
-      user.value = null;
-      saveToStorage();
     }
   }
 

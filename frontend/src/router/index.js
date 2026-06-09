@@ -121,9 +121,28 @@ router.beforeEach(async (to, from, next) => {
     isInitialized = true;
     await authStore.init();
     
-    // 对于登录/注册等公开页面，不需要获取用户信息，避免触发 401 跳转循环
-    if (!to.meta.guestOnly) {
+    // 如果已经确定未认证，直接跳转到登录页，不要再调用fetchUser()
+    if (!authStore.isAuthenticated) {
+      // 如果目标页面需要认证，则跳转登录
+      if (to.meta.requiresAuth) {
+        next('/login');
+        return;
+      }
+      // 公开页面，直接放行
+      next();
+      return;
+    }
+
+    // 已认证用户，获取用户信息
+    try {
       await authStore.fetchUser();
+    } catch (error) {
+      // fetchUser失败，清除认证状态并重定向到登录页
+      console.error('获取用户信息失败:', error);
+      if (to.meta.requiresAuth) {
+        next('/login');
+        return;
+      }
     }
   }
 
