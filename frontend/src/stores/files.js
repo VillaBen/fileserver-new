@@ -206,20 +206,28 @@ export const useFilesStore = defineStore('files', () => {
     }
     const targetConflictAction = conflictAction || uploadItem.conflictAction || 'keepBoth';
     formData.append('conflictAction', targetConflictAction);
-    
+
     // 创建 AbortController 用于取消上传
     const controller = new AbortController();
     uploadItem.controller = controller;
-    
+
     try {
+      uploadItem.status = 'uploading';
+      uploadItem.progress = 0;
+
       const response = await filesAPI.uploadWithProgress(
         formData,
         (progress) => {
-          uploadItem.progress = progress;
+          // 网络上传阶段占 0-85%，后端处理占 85-100%
+          uploadItem.progress = Math.round(progress * 0.85);
         },
         { signal: controller.signal }
       );
-      
+
+      // 网络上传完成，进入后端处理阶段（加密、扫描、写入数据库）
+      uploadItem.progress = 85;
+      uploadItem.status = 'processing';
+
       if (response.success) {
         // 检查是否有文件被跳过（因验证失败等原因）
         if (response.conflicts && response.conflicts.length > 0) {
@@ -227,9 +235,9 @@ export const useFilesStore = defineStore('files', () => {
           uploadItem.status = 'failed';
           uploadItem.errorReason = response.conflicts[0]?.reason || '文件验证失败';
           failedUploads.value.push(uploadItem);
-          
+
           // 显示警告提示
-          const conflictInfo = response.conflicts.map(c => 
+          const conflictInfo = response.conflicts.map(c =>
             `${c.fileName}: ${c.reason}`
           ).join('；');
           toast.warning(`部分文件上传失败：${conflictInfo}`);

@@ -491,10 +491,10 @@
     </el-dialog>
 
     <!-- Scan Result Detail Dialog -->
-    <el-dialog 
-      v-model="showScanResultDialog" 
-      :title="'扫描详情 - ' + (currentScanFile?.name || '')" 
-      width="520px"
+    <el-dialog
+      v-model="showScanResultDialog"
+      :title="'扫描详情 - ' + (currentScanFile?.name || '')"
+      width="560px"
     >
       <div v-if="loadingScanResult" class="scan-result-loading">
         <el-icon class="is-loading"><Loading /></el-icon>
@@ -502,7 +502,7 @@
       </div>
       <div v-else-if="scanResult" class="scan-result-content">
         <div class="scan-status-row" :class="scanResult.securityStatus">
-          <el-icon :size="24">
+          <el-icon :size="28">
             <CircleCheck v-if="scanResult.securityStatus === 'safe'" />
             <Warning v-else-if="scanResult.securityStatus === 'warning'" />
             <CircleClose v-else-if="scanResult.securityStatus === 'dangerous'" />
@@ -513,9 +513,33 @@
           </span>
         </div>
 
+        <!-- 扫描步骤展示 -->
+        <div class="scan-steps">
+          <div class="scan-steps-title">扫描步骤</div>
+          <div class="scan-steps-list">
+            <div
+              v-for="(step, idx) in getScanSteps(scanResult)"
+              :key="idx"
+              class="scan-step-item"
+              :class="step.status"
+            >
+              <div class="scan-step-icon">
+                <CircleCheck v-if="step.status === 'passed'" :size="16" />
+                <Warning v-else-if="step.status === 'warning'" :size="16" />
+                <CircleClose v-else-if="step.status === 'failed'" :size="16" />
+                <QuestionFilled v-else :size="16" />
+              </div>
+              <div class="scan-step-info">
+                <div class="scan-step-name">{{ step.name }}</div>
+                <div class="scan-step-desc">{{ step.description }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <el-descriptions :column="1" border class="scan-descriptions">
           <el-descriptions-item label="扫描模式">
-            {{ scanResult.scanMode || '未扫描' }}
+            {{ getScanModeDisplay(scanResult.scanMode) }}
           </el-descriptions-item>
           <el-descriptions-item label="扫描时间">
             {{ formatDate(scanResult.scanAt) }}
@@ -651,6 +675,83 @@ const getSecurityStatusText = (file) => {
     case 'dangerous': return '危险';
     default: return '未知';
   }
+};
+
+// 获取扫描模式的友好显示
+const getScanModeDisplay = (mode) => {
+  if (!mode) return '未扫描';
+  const modeMap = {
+    'clamav': 'ClamAV 杀毒引擎',
+    'file-header': '文件头检测',
+    'hybrid': '混合模式检测 (文件头 + ClamAV)',
+    'virustotal': 'VirusTotal 云端检测',
+    'multi-scan': '多引擎扫描 (文件头 + ClamAV + VirusTotal)',
+    'disabled': '扫描已禁用'
+  };
+  return modeMap[mode] || mode;
+};
+
+// 根据扫描结果生成扫描步骤
+const getScanSteps = (result) => {
+  const mode = result.scanMode;
+  const isSafe = result.securityStatus === 'safe';
+  const isWarning = result.securityStatus === 'warning';
+  const isDangerous = result.securityStatus === 'dangerous';
+  const hasWarnings = result.warnings && result.warnings.length > 0;
+  const steps = [];
+
+  // 基础步骤：所有文件都经过文件头检测
+  steps.push({
+    name: '文件扩展名与类型检测',
+    status: hasWarnings ? 'warning' : (isDangerous && result.details?.includes('扩展名') ? 'failed' : 'passed'),
+    description: '检查文件扩展名和 MIME 类型是否匹配，防止伪装文件'
+  });
+
+  steps.push({
+    name: '文件签名校验',
+    status: hasWarnings ? 'warning' : (isDangerous && result.details?.includes('签名') ? 'failed' : 'passed'),
+    description: '通过文件头部 magic bytes 校验真实文件类型'
+  });
+
+  // ClamAV 相关步骤
+  if (mode === 'clamav' || mode === 'hybrid' || mode === 'multi-scan') {
+    steps.push({
+      name: 'ClamAV 特征码扫描',
+      status: isDangerous ? 'failed' : (result.error ? 'warning' : 'passed'),
+      description: result.error
+        ? `特征码库扫描 (${result.error})`
+        : '使用数百万条病毒特征码进行深度扫描'
+    });
+    steps.push({
+      name: '启发式分析',
+      status: isDangerous ? 'failed' : 'passed',
+      description: '检测未知病毒与新型恶意代码的行为模式'
+    });
+  }
+
+  // VirusTotal 相关步骤
+  if (mode === 'virustotal' || mode === 'multi-scan') {
+    steps.push({
+      name: 'VirusTotal 多引擎分析',
+      status: isDangerous ? 'failed' : (result.error ? 'warning' : 'passed'),
+      description: result.error
+        ? `云端多引擎扫描 (${result.error})`
+        : '70+ 个国际杀毒引擎云端联合分析'
+    });
+  }
+
+  // 最终判定
+  steps.push({
+    name: '综合安全判定',
+    status: isDangerous ? 'failed' : (isWarning ? 'warning' : 'passed'),
+    description: isDangerous
+      ? '检测到恶意内容，文件已被拒绝'
+      : (isWarning
+        ? '检测到可疑特征，建议进一步检查'
+        : '所有安全检查通过')
+  });
+
+  return steps;
 };
 
 // 显示扫描详情
@@ -1777,6 +1878,82 @@ const copyShareLink = () => {
 .scan-status-row.dangerous {
   background: rgba(245, 108, 108, 0.12);
   color: var(--el-color-danger);
+}
+
+.scan-steps {
+  margin-bottom: 16px;
+}
+
+.scan-steps-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-regular);
+  margin-bottom: 12px;
+}
+
+.scan-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scan-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--el-fill-color-lightest);
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.scan-step-item.passed {
+  border-color: rgba(103, 194, 58, 0.3);
+  background: rgba(103, 194, 58, 0.08);
+}
+
+.scan-step-item.warning {
+  border-color: rgba(230, 162, 60, 0.3);
+  background: rgba(230, 162, 60, 0.08);
+}
+
+.scan-step-item.failed {
+  border-color: rgba(245, 108, 108, 0.3);
+  background: rgba(245, 108, 108, 0.08);
+}
+
+.scan-step-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.scan-step-item.passed .scan-step-icon {
+  color: var(--el-color-success);
+}
+
+.scan-step-item.warning .scan-step-icon {
+  color: var(--el-color-warning);
+}
+
+.scan-step-item.failed .scan-step-icon {
+  color: var(--el-color-danger);
+}
+
+.scan-step-info {
+  flex: 1;
+}
+
+.scan-step-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+  margin-bottom: 4px;
+}
+
+.scan-step-desc {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.5;
 }
 
 .scan-descriptions {

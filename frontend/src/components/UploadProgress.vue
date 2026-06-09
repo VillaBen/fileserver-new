@@ -106,7 +106,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, watch, onMounted, onUnmounted } from 'vue';
 import { Document, Clock, CircleCheck, CircleClose, VideoPause, VideoPlay, Close, Refresh } from '@element-plus/icons-vue';
 import { ElMessageBox } from 'element-plus';
 import { useI18nStore } from '../stores/i18n';
@@ -123,22 +123,54 @@ const completedUploads = computed(() => filesStore.completedUploads);
 const failedUploads = computed(() => filesStore.failedUploads);
 const overallProgress = computed(() => filesStore.uploadProgress);
 
-const hasActiveOrPending = computed(() => 
+const hasActiveOrPending = computed(() =>
   uploadQueue.value.length > 0 || activeUploads.value.length > 0
 );
 
-const hasAnyUploads = computed(() => 
-  uploadQueue.value.length > 0 || activeUploads.value.length > 0 || 
+const hasAnyUploads = computed(() =>
+  uploadQueue.value.length > 0 || activeUploads.value.length > 0 ||
   completedUploads.value.length > 0 || failedUploads.value.length > 0
 );
 
 const hasFailedUploads = computed(() => failedUploads.value.length > 0);
+
+// 自动清理：所有上传都完成且没有失败时，3秒后自动清理
+let autoClearTimer = null;
+
+watch([activeUploads, uploadQueue], ([newActive, newQueue]) => {
+  if (newActive.length === 0 && newQueue.length === 0 && hasAnyUploads.value) {
+    // 检查是否只有完成的上传（没有失败的）
+    if (failedUploads.value.length === 0 && completedUploads.value.length > 0) {
+      // 清理旧的定时器
+      if (autoClearTimer) {
+        clearTimeout(autoClearTimer);
+      }
+      // 3秒后自动清理
+      autoClearTimer = setTimeout(() => {
+        filesStore.clearUploads();
+      }, 3000);
+    }
+  } else {
+    // 有新的上传开始，取消自动清理
+    if (autoClearTimer) {
+      clearTimeout(autoClearTimer);
+      autoClearTimer = null;
+    }
+  }
+}, { deep: true });
+
+onUnmounted(() => {
+  if (autoClearTimer) {
+    clearTimeout(autoClearTimer);
+  }
+});
 
 // 方法
 function getStatusText(status) {
   const statusMap = {
     'pending': i18n.t('pending') || '等待中',
     'uploading': i18n.t('uploading') || '上传中',
+    'processing': i18n.t('processing') || '处理中',
     'completed': i18n.t('completed') || '已完成',
     'failed': i18n.t('failed') || '失败',
     'paused': i18n.t('paused') || '已暂停',
