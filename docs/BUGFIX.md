@@ -5,6 +5,108 @@
 
 ---
 
+## 2026-06-09 (最新)
+
+### P0 - 文件上传 Content-Type 导致文件无法上传
+
+**问题描述**：
+文件上传显示成功，进度条完成，但后端日志和数据库没有记录。前端错误提示显示成功是因为服务器没有返回错误信息所以提示成功。
+
+**问题分析**：
+1. **手动设置 Content-Type**：axios 实例默认设置了 `Content-Type: application/json`，对于 FormData 上传，浏览器需要自动设置 `multipart/form-data` 和 `boundary` 参数
+2. **手动设置会覆盖浏览器自动设置**：当手动设置 Content-Type 时，会覆盖浏览器自动计算的正确的 multipart/form-data，导致后端 multer 无法解析文件
+3. **上传参数传递不完整**：`startUploads()` 调用时未传递 `folderId` 和 `conflictAction` 参数
+4. **空文件无明确错误**：当 `req.files` 为空时，后端返回了"成功"响应而不是错误
+
+**修复文件**：
+- [index.js (frontend API)](file:///workspace/frontend/src/api/index.js)
+- [files.js (frontend store)](file:///workspace/frontend/src/stores/files.js)
+- [Dashboard.vue (frontend)](file:///workspace/frontend/src/views/Dashboard.vue)
+- [files.js (backend routes)](file:///workspace/backend/src/routes/files.js)
+
+**修复内容**：
+
+#### 1. **axios 拦截器动态设置 Content-Type** ([index.js](file:///workspace/frontend/src/api/index.js))
+```javascript
+// 修改前：手动设置 Content-Type（错误）
+export const apiClient = axios.create({
+  baseURL: BASE_URL,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// 修改后：动态处理 Content-Type
+export const apiClient = axios.create({
+  baseURL: BASE_URL,
+  timeout: 30000,
+});
+
+apiClient.interceptors.request.use(
+  async (config) => {
+    const authStore = useAuthStore();
+    const token = authStore.user?.token || localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    // FormData 请求由浏览器自动设置正确的 Content-Type 和 boundary
+    if (!(config.data instanceof FormData) && !config.headers['Content-Type']) {
+      config.headers['Content-Type'] = 'application/json';
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+```
+
+#### 2. **完善上传参数传递** ([files.js](file:///workspace/frontend/src/stores/files.js))
+```javascript
+async function uploadSingleFile(uploadItem, folderId, conflictAction) {
+  const formData = new FormData();
+  formData.append('files', uploadItem.file);
+  const targetFolderId = folderId !== undefined && folderId !== null
+    ? folderId
+    : (uploadItem.folderId !== undefined ? uploadItem.folderId : null);
+  if (targetFolderId !== null) {
+    formData.append('folderId', targetFolderId);
+  }
+  const targetConflictAction = conflictAction || uploadItem.conflictAction || 'keepBoth';
+  formData.append('conflictAction', targetConflictAction);
+  // ...
+}
+```
+
+#### 3. **前端 startUploads 参数传递** ([Dashboard.vue](file:///workspace/frontend/src/views/Dashboard.vue))
+```javascript
+// 初始化上传队列并开始上传
+filesStore.initUploadQueue(nativeFiles, filesStore.currentFolderId, conflictAction);
+filesStore.startUploads(filesStore.currentFolderId, conflictAction);
+```
+
+#### 4. **后端空文件检查** ([files.js](file:///workspace/backend/src/routes/files.js))
+```javascript
+router.post('/upload', upload.array('files', 10), validateFile, malwareScan, async (req, res) => {
+  try {
+    const user = req.user;
+    const { folderId, conflictAction = 'keepBoth' } = req.body;
+    const uploadedFiles = [];
+    const conflicts = [];
+
+    // 如果没有文件被 multer 解析，返回明确错误
+    if (!req.files || req.files.length === 0) {
+      return res.apiError('没有文件被上传，请检查文件类型和格式', 'NO_FILES_UPLOADED');
+    }
+    // ...
+```
+
+**根本原因**：
+`multipart/form-data` 需要 `boundary` 参数来分隔表单字段，这个参数由浏览器自动计算生成。手动设置 Content-Type 会覆盖浏览器自动设置的正确值，导致后端 multer 无法正确解析 multipart 请求体。
+
+**当前完成度**：100%
+
+---
+
 ## 2026-06-08 (最新)
 
 ### P0 - 头像上传安全增强
