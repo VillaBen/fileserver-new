@@ -1273,6 +1273,7 @@ const handleFileChange = async (file, fileList) => {
       const existingFile = uploadFiles.value.find(existing => existing.uid === f.uid);
       console.log('已有文件，查找现有状态:', existingFile?.securityStatus);
       if (existingFile) {
+        // 找到现有文件，保留状态
         newUploadFiles.push({
           ...f,
           scanning: existingFile.scanning,
@@ -1281,12 +1282,28 @@ const handleFileChange = async (file, fileList) => {
           scanResult: existingFile.scanResult
         });
       } else {
+        // UID在existingUids中但找不到文件，可能是状态被清空了，当作新文件处理
+        console.log('警告：UID存在但找不到文件，当作新文件处理');
+        const fileName = f.raw?.name || f.name;
+        
+        // 检查文件类型是否允许
+        if (!isFileAllowed(fileName)) {
+          const ext = getFileExtension(fileName);
+          if (isExtensionBlocked(fileName)) {
+            toast.warning(`${i18n.t('fileTypeBlocked') || 'File type blocked'}: .${ext}`);
+          } else {
+            toast.warning(`${i18n.t('unsupportedFileType') || 'Unsupported file type'}: .${ext}`);
+          }
+          return;
+        }
+        
         newUploadFiles.push({
           ...f,
-          scanning: false,
+          scanning: true,
           securityStatus: 'pending',
-          securityStatusText: i18n.t('pending') || 'Pending'
+          securityStatusText: i18n.t('scanning') || 'Scanning...'
         });
+        newFilesToScan.push(f);
       }
     }
   });
