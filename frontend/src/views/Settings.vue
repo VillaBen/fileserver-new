@@ -1067,11 +1067,11 @@ const handleEmailInput = (value) => {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #fffbeb;
-  color: #d97706;
+  background: var(--el-color-warning-light-9);
+  color: var(--el-color-warning-dark-2);
   padding: 10px 14px;
   border-radius: 8px;
-  border: 1px solid #fed7aa;
+  border: 1px solid var(--el-color-warning-light-7);
   font-size: 14px;
 }
 

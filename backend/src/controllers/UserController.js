@@ -158,23 +158,14 @@ const getProfile = async (req, res) => {
 
     console.log('[Backend-getProfile] 3. 账户信息:', account);
 
-    // 获取或创建用户配置
-    let profile = await db.asyncGet(
+    // 确保 user_profiles 记录存在
+    await ensureProfileExists(accountId);
+
+    // 获取用户配置
+    const profile = await db.asyncGet(
       'SELECT * FROM user_profiles WHERE account_id = ?',
       [accountId]
     );
-
-    if (!profile) {
-      console.log('[Backend-getProfile] 4. 创建新的用户配置');
-      await db.asyncRun(
-        'INSERT INTO user_profiles (account_id, storage_quota, language) VALUES (?, ?, ?)',
-        [accountId, account.storage_quota, 'zh-CN']
-      );
-      profile = await db.asyncGet(
-        'SELECT * FROM user_profiles WHERE account_id = ?',
-        [accountId]
-      );
-    }
     
     console.log('[Backend-getProfile] 5. 用户配置:', profile);
 
@@ -226,12 +217,31 @@ const getProfile = async (req, res) => {
 };
 
 /**
+ * 确保 user_profiles 记录存在（不存在则创建）
+ */
+const ensureProfileExists = async (accountId) => {
+  const existing = await db.asyncGet(
+    'SELECT id FROM user_profiles WHERE account_id = ?',
+    [accountId]
+  );
+  if (!existing) {
+    await db.asyncRun(
+      'INSERT INTO user_profiles (account_id, storage_quota, language) VALUES (?, ?, ?)',
+      [accountId, 10737418240, 'en-US']
+    );
+  }
+};
+
+/**
  * 更新用户资料
  */
 const updateProfile = async (req, res) => {
   try {
     const accountId = req.user.id;
     const { language, trashAutoDeleteEnabled, trashAutoDeleteDays, displayName, username, email } = req.body;
+
+    // 确保 user_profiles 记录存在
+    await ensureProfileExists(accountId);
 
     // 更新用户配置表更新
     const profileUpdates = {};

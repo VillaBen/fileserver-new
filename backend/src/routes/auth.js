@@ -284,6 +284,20 @@ router.post('/logout', requireAuth, async (req, res) => {
   }
 });
 
+// 确保 user_profiles 记录存在（不存在则创建）
+async function ensureUserProfileExists(accountId, storageQuota) {
+  const existing = await db.asyncGet(
+    'SELECT id FROM user_profiles WHERE account_id = ?',
+    [accountId]
+  );
+  if (!existing) {
+    await db.asyncRun(
+      'INSERT INTO user_profiles (account_id, storage_quota, language) VALUES (?, ?, ?)',
+      [accountId, storageQuota || 10737418240, 'en-US']
+    );
+  }
+}
+
 // 获取当前用户信息
 router.get('/me', requireAuth, async (req, res) => {
   try {
@@ -299,22 +313,14 @@ router.get('/me', requireAuth, async (req, res) => {
       return res.apiError('用户不存在', 'USER_NOT_FOUND');
     }
 
-    // 获取或创建用户配置
-    let profile = await db.asyncGet(
+    // 确保 user_profiles 记录存在
+    await ensureUserProfileExists(accountId, account.storage_quota);
+
+    // 获取用户配置
+    const profile = await db.asyncGet(
       'SELECT * FROM user_profiles WHERE account_id = ?',
       [accountId]
     );
-
-    if (!profile) {
-      await db.asyncRun(
-        'INSERT INTO user_profiles (account_id, storage_quota, language) VALUES (?, ?, ?)',
-        [accountId, account.storage_quota, 'zh-CN']
-      );
-      profile = await db.asyncGet(
-        'SELECT * FROM user_profiles WHERE account_id = ?',
-        [accountId]
-      );
-    }
 
     // 获取存储使用情况
     const storage = await db.asyncGet(
