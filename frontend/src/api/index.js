@@ -35,18 +35,24 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     if (error.response?.status === 401) {
-      const authStore = useAuthStore();
-      authStore.logout();
-      window.location.href = '/login';
+      // 检查当前是否已经在登录页面，避免循环跳转
+      if (window.location.pathname !== '/login') {
+        const authStore = useAuthStore();
+        authStore.logout();
+        window.location.href = '/login';
+      }
     }
     // 处理业务级别的登录过期错误（状态非401，但错误码为 TOKEN_EXPIRED / UNAUTHORIZED）
     if (error.response?.data) {
       const resData = error.response.data;
       const errCode = resData.error?.code || resData.errorCode || resData.code;
       if (errCode === 'TOKEN_EXPIRED' || errCode === 'UNAUTHORIZED') {
-        const authStore = useAuthStore();
-        authStore.logout();
-        window.location.href = '/login';
+        // 检查当前是否已经在登录页面，避免循环跳转
+        if (window.location.pathname !== '/login') {
+          const authStore = useAuthStore();
+          authStore.logout();
+          window.location.href = '/login';
+        }
       }
     }
     // 改造错误对象，让它包含后端返回的详细信息

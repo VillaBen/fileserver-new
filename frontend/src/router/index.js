@@ -120,7 +120,11 @@ router.beforeEach(async (to, from, next) => {
   if (!isInitialized) {
     isInitialized = true;
     await authStore.init();
-    await authStore.fetchUser();
+    
+    // 对于登录/注册等公开页面，不需要获取用户信息，避免触发 401 跳转循环
+    if (!to.meta.guestOnly) {
+      await authStore.fetchUser();
+    }
   }
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
