@@ -1034,14 +1034,19 @@ const handleUpload = async () => {
       }
     }
     
-    const nativeFiles = filesToUpload.map(f => f.raw);
+    // 将扫描结果与文件一起传递
+    const filesWithScanResults = filesToUpload.map(f => ({
+      file: f.raw,
+      securityStatus: f.securityStatus,
+      scanResult: f.scanResult
+    }));
     
     // 立即关闭上传对话框
     showUploadDialog.value = false;
     uploadFiles.value = [];
     
-    // 初始化上传队列并开始上传
-    filesStore.initUploadQueue(nativeFiles, filesStore.currentFolderId, conflictAction);
+    // 初始化上传队列并开始上传（传递扫描结果）
+    filesStore.initUploadQueue(filesWithScanResults, filesStore.currentFolderId, conflictAction);
     filesStore.startUploads(filesStore.currentFolderId, conflictAction);
   };
 

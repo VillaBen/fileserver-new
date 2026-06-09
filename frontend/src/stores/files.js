@@ -157,7 +157,12 @@ export const useFilesStore = defineStore('files', () => {
       return uploadQueue.value;
     }
 
-    fileList.forEach((file, index) => {
+    fileList.forEach((item, index) => {
+      // 支持两种格式：直接的 File 对象 或 包含文件和扫描结果的对象
+      const file = item.file || item;
+      const securityStatus = item.securityStatus || 'pending';
+      const scanResult = item.scanResult || null;
+      
       uploadQueue.value.push({
         id: `upload-${Date.now()}-${index}`,
         file,
@@ -168,6 +173,8 @@ export const useFilesStore = defineStore('files', () => {
         folderId,
         conflictAction,
         controller: null,
+        securityStatus,
+        scanResult,
       });
     });
 
