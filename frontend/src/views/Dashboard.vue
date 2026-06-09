@@ -1043,6 +1043,23 @@ const handleUpload = async () => {
     filesStore.startUploads(filesStore.currentFolderId, conflictAction);
   };
 
+// 允许的文件扩展名白名单（与后端保持一致）
+const allowedExtensions = [
+  'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'ico', 'tiff', 'tif',
+  'pdf',
+  'docx', 'xlsx', 'pptx',
+  'txt', 'md', 'json', 'xml', 'csv', 'log',
+  'mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma',
+  'mp4', 'webm', 'mov', 'avi', 'mkv', 'flv'
+];
+
+// 检查文件扩展名是否允许
+const isFileExtensionAllowed = (fileName) => {
+  if (!fileName || typeof fileName !== 'string') return false;
+  const ext = fileName.split('.').pop().toLowerCase();
+  return allowedExtensions.includes(ext);
+};
+
 // 处理文件选择变化
 const handleFileChange = async (file, fileList) => {
   const existingUids = new Set(uploadFiles.value.map(f => f.uid));
@@ -1053,6 +1070,15 @@ const handleFileChange = async (file, fileList) => {
     const isNewFile = !existingUids.has(f.uid);
     
     if (isNewFile) {
+      const fileName = f.raw?.name || f.name;
+      
+      // 检查文件类型是否允许
+      if (!isFileExtensionAllowed(fileName)) {
+        const ext = fileName?.split('.').pop()?.toLowerCase() || 'unknown';
+        toast.warning(`${i18n.t('unsupportedFileType') || 'Unsupported file type'}: .${ext}`);
+        return;
+      }
+      
       newUploadFiles.push({
         ...f,
         scanning: true,
