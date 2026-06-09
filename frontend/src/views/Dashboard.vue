@@ -1230,19 +1230,29 @@ const beforeUpload = (file) => {
 
 // 处理文件选择变化
 const handleFileChange = async (file, fileList) => {
+  console.log('=== handleFileChange 开始 ===');
+  console.log('现有文件数量:', uploadFiles.value.length);
+  console.log('新文件列表数量:', fileList.length);
+  
   const existingUids = new Set(uploadFiles.value.map(f => f.uid));
+  console.log('现有文件UID:', [...existingUids]);
+  
   const newUploadFiles = [];
   const newFilesToScan = [];
   
-  fileList.forEach((f) => {
+  fileList.forEach((f, idx) => {
+    console.log(`处理文件 ${idx}:`, f.name, 'UID:', f.uid);
     const isNewFile = !existingUids.has(f.uid);
+    console.log('是否新文件:', isNewFile);
     
     if (isNewFile) {
       const fileName = f.raw?.name || f.name;
+      console.log('文件名:', fileName);
       
       // 检查文件类型是否允许（先黑名单，再白名单）
       if (!isFileAllowed(fileName)) {
         const ext = getFileExtension(fileName);
+        console.log('文件类型不允许:', ext);
         if (isExtensionBlocked(fileName)) {
           toast.warning(`${i18n.t('fileTypeBlocked') || 'File type blocked'}: .${ext}`);
         } else {
@@ -1251,6 +1261,7 @@ const handleFileChange = async (file, fileList) => {
         return;
       }
       
+      console.log('文件类型允许，添加到扫描队列');
       newUploadFiles.push({
         ...f,
         scanning: true,
@@ -1260,6 +1271,7 @@ const handleFileChange = async (file, fileList) => {
       newFilesToScan.push(f);
     } else {
       const existingFile = uploadFiles.value.find(existing => existing.uid === f.uid);
+      console.log('已有文件，查找现有状态:', existingFile?.securityStatus);
       if (existingFile) {
         newUploadFiles.push({
           ...f,
@@ -1279,7 +1291,10 @@ const handleFileChange = async (file, fileList) => {
     }
   });
   
+  console.log('新上传文件列表:', newUploadFiles.map(f => ({name: f.name, scanning: f.scanning, securityStatus: f.securityStatus})));
   uploadFiles.value = newUploadFiles;
+  console.log('uploadFiles.value 更新后:', uploadFiles.value.length, '个文件');
+  console.log('需要扫描的文件:', newFilesToScan.length, '个');
   
   if (newFilesToScan.length > 0) {
     const formData = new FormData();
