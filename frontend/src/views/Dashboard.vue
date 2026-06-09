@@ -1045,71 +1045,105 @@ const handleUpload = async () => {
 
 // 处理文件选择变化
 const handleFileChange = async (file, fileList) => {
-  // 初始设置所有文件为扫描中状态
-  uploadFiles.value = fileList.map((f, idx) => ({
-    ...f,
-    scanning: true,
-    securityStatus: 'pending',
-    securityStatusText: i18n.t('scanning') || 'Scanning...'
-  }));
+  const existingUids = new Set(uploadFiles.value.map(f => f.uid));
+  const newUploadFiles = [];
+  const newFilesToScan = [];
   
-  // 创建 FormData 发送到后端
-  const formData = new FormData();
-  fileList.forEach((file) => {
-    if (file.raw) {
-      formData.append('files', file.raw);
+  fileList.forEach((f) => {
+    const isNewFile = !existingUids.has(f.uid);
+    
+    if (isNewFile) {
+      newUploadFiles.push({
+        ...f,
+        scanning: true,
+        securityStatus: 'pending',
+        securityStatusText: i18n.t('scanning') || 'Scanning...'
+      });
+      newFilesToScan.push(f);
+    } else {
+      const existingFile = uploadFiles.value.find(existing => existing.uid === f.uid);
+      if (existingFile) {
+        newUploadFiles.push({
+          ...f,
+          scanning: existingFile.scanning,
+          securityStatus: existingFile.securityStatus,
+          securityStatusText: existingFile.securityStatusText,
+          scanResult: existingFile.scanResult
+        });
+      } else {
+        newUploadFiles.push({
+          ...f,
+          scanning: false,
+          securityStatus: 'pending',
+          securityStatusText: i18n.t('pending') || 'Pending'
+        });
+      }
     }
   });
   
-  try {
-    // 调用后端预览扫描 API
-    const response = await filesAPI.previewScan(formData);
-    
-    if (response.success && response.data) {
-      // 更新每个文件的扫描结果
-      response.data.forEach((scanResult, idx) => {
-        if (!uploadFiles.value[idx]) return;
-        
-        // 确定状态文本
-        let statusText;
-        switch (scanResult.securityStatus) {
-          case 'safe':
-            statusText = i18n.t('scanResultSafe') || 'Safe';
-            break;
-          case 'warning':
-            statusText = i18n.t('scanResultWarning') || 'Warning';
-            break;
-          case 'dangerous':
-            statusText = i18n.t('scanResultDangerous') || 'Dangerous';
-            break;
-          default:
-            statusText = i18n.t('unknown') || 'Unknown';
-        }
-        
-        // 更新文件状态
-        uploadFiles.value[idx] = {
-          ...uploadFiles.value[idx],
-          scanning: false,
-          securityStatus: scanResult.securityStatus,
-          securityStatusText: statusText,
-          scanResult: scanResult
-        };
-      });
-    }
-  } catch (error) {
-    console.error('扫描失败:', error);
-    // 如果扫描失败，将所有文件状态设为警告
-    uploadFiles.value.forEach((file, idx) => {
-      uploadFiles.value[idx] = {
-        ...file,
-        scanning: false,
-        securityStatus: 'warning',
-        securityStatusText: i18n.t('scanFailed') || 'Scan Failed'
-      };
+  uploadFiles.value = newUploadFiles;
+  
+  if (newFilesToScan.length > 0) {
+    const formData = new FormData();
+    newFilesToScan.forEach((file) => {
+      if (file.raw) {
+        formData.append('files', file.raw);
+      }
     });
-    toast.error(i18n.t('scanFailed') || '扫描失败');
+    
+    try {
+      const response = await filesAPI.previewScan(formData);
+      
+      if (response.success && response.data) {
+        response.data.forEach((scanResult, scanIdx) => {
+          const newFile = newFilesToScan[scanIdx];
+          if (!newFile) return;
+          
+          const uploadIdx = uploadFiles.value.findIndex(f => f.uid === newFile.uid);
+          if (uploadIdx === -1) return;
+          
+          let statusText;
+          switch (scanResult.securityStatus) {
+            case 'safe':
+              statusText = i18n.t('scanResultSafe') || 'Safe';
+              break;
+            case 'warning':
+              statusText = i18n.t('scanResultWarning') || 'Warning';
+              break;
+            case 'dangerous':
+              statusText = i18n.t('scanResultDangerous') || 'Dangerous';
+              break;
+            default:
+              statusText = i18n.t('unknown') || 'Unknown';
+          }
+          
+          uploadFiles.value[uploadIdx] = {
+            ...uploadFiles.value[uploadIdx],
+            scanning: false,
+            securityStatus: scanResult.securityStatus,
+            securityStatusText: statusText,
+            scanResult: scanResult
+          };
+        });
+      }
+    } catch (error) {
+      console.error('扫描失败:', error);
+      newFilesToScan.forEach(newFile => {
+        const uploadIdx = uploadFiles.value.findIndex(f => f.uid === newFile.uid);
+        if (uploadIdx !== -1) {
+          uploadFiles.value[uploadIdx] = {
+            ...uploadFiles.value[uploadIdx],
+            scanning: false,
+            securityStatus: 'warning',
+            securityStatusText: i18n.t('scanFailed') || 'Scan Failed'
+          };
+        }
+      });
+      toast.error(i18n.t('scanFailed') || '扫描失败');
+    }
   }
 };
+
 
 // 移除上传文件
 const removeUploadFile = (index) => {
