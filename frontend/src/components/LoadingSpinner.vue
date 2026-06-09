@@ -55,6 +55,7 @@ const props = defineProps({
 
 .spinner-icon {
   animation: spinner-rotate 1s linear infinite;
+  color: #409eff;
 }
 
 @keyframes spinner-rotate {
