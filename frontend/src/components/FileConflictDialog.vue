@@ -120,7 +120,7 @@
     </div>
 
     <div v-if="isProcessing" class="processing">
-      <el-icon class="is-loading"><Loading /></el-icon>
+      <el-icon class="processing-spinning-icon"><Loading /></el-icon>
       <span>{{ i18nStore.t('processing') || 'Processing...' }}</span>
     </div>
 
@@ -446,6 +446,21 @@ defineExpose({
   gap: 10px;
   padding: 20px;
   color: #666;
+}
+
+.processing-spinning-icon {
+  display: inline-flex;
+  animation: processing-spin 1s linear infinite;
+  transform-origin: center center;
+}
+
+@keyframes processing-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .dialog-footer {

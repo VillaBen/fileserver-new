@@ -516,7 +516,7 @@
       width="560px"
     >
       <div v-if="loadingScanResult" class="scan-result-loading">
-        <el-icon class="scan-spinning-icon"><Loading /></el-icon>
+        <el-icon class="scan-result-spinning-icon"><Loading /></el-icon>
         <span>加载中...</span>
       </div>
       <div v-else-if="scanResult" class="scan-result-content">
@@ -2215,6 +2215,21 @@ const copyShareLink = () => {
   padding: 40px;
   gap: 8px;
   color: var(--el-text-color-secondary);
+}
+
+.scan-result-spinning-icon {
+  display: inline-flex;
+  animation: scan-result-spin 1s linear infinite;
+  transform-origin: center center;
+}
+
+@keyframes scan-result-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .scan-status-row {

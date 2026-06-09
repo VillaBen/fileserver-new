@@ -86,18 +86,7 @@ async function detectLocation() {
   }
 
   try {
-    // 优先使用浏览器的语言设置
-    const browserLang = navigator.language || navigator.userLanguage;
-    console.log('[RegionDetector] 浏览器语言:', browserLang);
-    
-    if (browserLang.startsWith('zh')) {
-      detectedCountryCode.value = 'CN';
-      detectedCountryName.value = 'China';
-      checkAndShowDialog();
-      return;
-    }
-
-    // 尝试使用 IP 地址检测，使用 AbortController 设置超时
+    // 纯IP检测模式，使用 AbortController 设置超时
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
