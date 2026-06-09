@@ -75,7 +75,6 @@ function selectLanguage(code) {
 }
 
 async function detectLocation() {
-  console.log('LanguageSelector: Starting location detection...');
   try {
     const response = await fetch('https://ipapi.co/json/');
     if (!response.ok) {
@@ -83,30 +82,22 @@ async function detectLocation() {
     }
     
     const data = await response.json();
-    console.log('LanguageSelector: Location API response:', data);
     
     const countryCode = data.country_code;
     const countryName = data.country_name || 'Your location';
     
     detectedLocationName.value = countryName;
-    console.log('LanguageSelector: Detected location:', countryCode, countryName);
     
     const chineseRegions = ['CN', 'TW', 'HK', 'MO', 'SG', 'MY'];
     if (chineseRegions.includes(countryCode)) {
-      console.log('LanguageSelector: User in Chinese-speaking region');
       if (i18n.currentLocale === 'en-US' && !localStorage.getItem('locale')) {
-        console.log('LanguageSelector: Showing location hint');
         showLocationHint.value = true;
         setTimeout(() => {
           showLocationHint.value = false;
         }, 8000);
       }
-    } else {
-      console.log('LanguageSelector: User not in Chinese-speaking region');
     }
   } catch (error) {
-    console.warn('LanguageSelector: Location detection failed:', error);
-    console.warn('LanguageSelector: Error message:', error.message);
     detectedLocationName.value = '';
   }
 }
