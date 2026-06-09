@@ -164,6 +164,7 @@
                 :placeholder="i18n.t('enterPassword')"
                 size="large"
               />
+              <PasswordStrength :password="passwordForm.newPassword" />
             </el-form-item>
             
             <el-form-item :label="i18n.t('confirmNewPassword')">
@@ -425,6 +426,7 @@ import { userAPI } from '../api';
 import { toast } from '../utils/toast';
 import { formatFileSize } from '../utils/format';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
+import PasswordStrength from '../components/PasswordStrength.vue';
 import { filterUsername, filterEmail, filterDisplayName } from '../utils/inputFilter';
 
 const i18n = useI18nStore();
@@ -932,6 +934,17 @@ const saveProfile = async () => {
   }
 };
 
+const validatePasswordStrength = (password) => {
+  let score = 0;
+  if (!password) return 0;
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+  if (/\d/.test(password)) score++;
+  if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+  return Math.min(4, Math.max(0, score));
+};
+
 // Password functions
 const changePassword = async () => {
   if (!passwordForm.value.currentPassword) {
@@ -940,6 +953,15 @@ const changePassword = async () => {
   }
   if (!passwordForm.value.newPassword) {
     toast.warning(i18n.t('pleaseEnterNewPassword') || 'Please enter new password');
+    return;
+  }
+  if (passwordForm.value.newPassword.length < 8) {
+    toast.warning(i18n.t('passwordTooShort') || 'Password must be at least 8 characters');
+    return;
+  }
+  const passwordStrength = validatePasswordStrength(passwordForm.value.newPassword);
+  if (passwordStrength < 2) {
+    toast.warning(i18n.t('passwordTooWeak') || 'Password is too weak. Please use a stronger password');
     return;
   }
   if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
