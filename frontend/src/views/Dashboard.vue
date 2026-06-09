@@ -289,7 +289,7 @@
           </div>
           <div class="file-actions">
             <el-button 
-              type="text" 
+              link 
               @click="removeUploadFile(index)" 
               class="delete-btn"
             >
@@ -1285,7 +1285,11 @@ const handleFileChange = async (file, fileList) => {
     });
     
     try {
+      console.log('开始扫描文件:', newFilesToScan.length, '个文件');
+      
       const response = await filesAPI.previewScan(formData);
+      
+      console.log('扫描响应:', response);
       
       if (!response || !response.success) {
         console.error('扫描响应异常:', response);
@@ -1296,6 +1300,8 @@ const handleFileChange = async (file, fileList) => {
         console.error('扫描结果格式错误:', response.data);
         throw new Error('扫描结果格式错误');
       }
+      
+      console.log('扫描结果数据:', response.data);
       
       // 使用响应式方式更新文件状态
       const updatedFiles = [...uploadFiles.value];
