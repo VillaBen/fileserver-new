@@ -2017,9 +2017,9 @@ const copyShareLink = () => {
 
 .upload-file-item .file-security-status .spinning,
 .scan-spinning-icon {
-  animation: scan-spin 1s linear infinite;
-  transform-origin: center center;
-  display: inline-flex;
+  animation: scan-spin 1s linear infinite !important;
+  transform-origin: center center !important;
+  display: inline-flex !important;
 }
 
 @keyframes scan-spin {
@@ -2218,9 +2218,9 @@ const copyShareLink = () => {
 }
 
 .scan-result-spinning-icon {
-  display: inline-flex;
-  animation: scan-result-spin 1s linear infinite;
-  transform-origin: center center;
+  display: inline-flex !important;
+  animation: scan-result-spin 1s linear infinite !important;
+  transform-origin: center center !important;
 }
 
 @keyframes scan-result-spin {

@@ -61,9 +61,9 @@ const spinnerClass = computed(() => `loading-spinner-icon-${props.color}`);
 }
 
 .spinner-icon {
-  display: inline-flex;
-  animation: spinner-rotate 1s linear infinite;
-  transform-origin: center center;
+  display: inline-flex !important;
+  animation: spinner-rotate 1s linear infinite !important;
+  transform-origin: center center !important;
 }
 
 @keyframes spinner-rotate {

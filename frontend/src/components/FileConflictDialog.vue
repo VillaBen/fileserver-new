@@ -449,9 +449,9 @@ defineExpose({
 }
 
 .processing-spinning-icon {
-  display: inline-flex;
-  animation: processing-spin 1s linear infinite;
-  transform-origin: center center;
+  display: inline-flex !important;
+  animation: processing-spin 1s linear infinite !important;
+  transform-origin: center center !important;
 }
 
 @keyframes processing-spin {
