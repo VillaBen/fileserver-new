@@ -172,7 +172,7 @@ router.post('/login', async (req, res) => {
         `UPDATE accounts 
          SET failed_login_attempts = failed_login_attempts + 1,
              locked_until = CASE 
-               WHEN failed_login_attempts >= 4 THEN datetime('now', '+15 minutes')
+               WHEN failed_login_attempts >= 4 THEN DATE_ADD(NOW(), INTERVAL 15 MINUTE)
                ELSE NULL 
              END
          WHERE id = ?`,
@@ -441,7 +441,7 @@ router.post('/reset-password', async (req, res) => {
 
     // 查找所有未过期的重置请求，然后解密比较
     const resets = await db.asyncAll(
-      'SELECT * FROM password_resets WHERE used = 0 AND expires_at > datetime("now")',
+      'SELECT * FROM password_resets WHERE used = 0 AND expires_at > NOW()',
       []
     );
 
@@ -563,7 +563,7 @@ router.post('/2fa/verify', requireAuth, async (req, res) => {
     if (matchedRecoveryCode) {
       // 使用恢复码
       await db.asyncRun(
-        'UPDATE recovery_codes SET used = 1, used_at = datetime("now") WHERE id = ?',
+        'UPDATE recovery_codes SET used = 1, used_at = NOW() WHERE id = ?',
         [matchedRecoveryCode.id]
       );
 
@@ -715,7 +715,7 @@ router.post('/verify-email-code', async (req, res) => {
 
     // 查找验证码
     const emailCodes = await db.asyncAll(
-      'SELECT * FROM email_codes WHERE email = ? AND purpose = ? AND expires_at > datetime("now")',
+      'SELECT * FROM email_codes WHERE email = ? AND purpose = ? AND expires_at > NOW()',
       [encryptedEmail, purpose]
     );
 
