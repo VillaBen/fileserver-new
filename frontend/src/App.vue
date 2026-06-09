@@ -1,8 +1,10 @@
 <template>
   <router-view />
+  <RegionDetector />
 </template>
 
 <script setup>
+import RegionDetector from './components/RegionDetector.vue';
 </script>
 
 <style>
