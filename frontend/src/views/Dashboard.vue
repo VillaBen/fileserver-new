@@ -639,6 +639,9 @@ const showShareDialog = ref(false);
 const showShareResultDialog = ref(false);
 const uploadFiles = ref([]);
 const newFolder = ref({ name: '' });
+
+// 用于持久化存储文件扫描状态（解决 el-upload 重置问题）
+const fileScanStatusMap = ref(new Map()); // key: uid, value: { scanning, securityStatus, securityStatusText, scanResult }
 const renameForm = ref({ name: '', id: null });
 const fileToRename = ref(null);
 const fileToDelete = ref(null);
@@ -1234,22 +1237,31 @@ const handleFileChange = async (file, fileList) => {
   console.log('现有文件数量:', uploadFiles.value.length);
   console.log('新文件列表数量:', fileList.length);
   
-  const existingUids = new Set(uploadFiles.value.map(f => f.uid));
-  console.log('现有文件UID:', [...existingUids]);
-  
   const newUploadFiles = [];
   const newFilesToScan = [];
   
   fileList.forEach((f, idx) => {
     console.log(`处理文件 ${idx}:`, f.name, 'UID:', f.uid);
-    const isNewFile = !existingUids.has(f.uid);
-    console.log('是否新文件:', isNewFile);
     
-    if (isNewFile) {
+    // 从持久化存储中获取文件状态
+    const savedStatus = fileScanStatusMap.value.get(f.uid);
+    
+    if (savedStatus) {
+      // 文件已扫描过，使用保存的状态
+      console.log('文件已存在于状态映射中，状态:', savedStatus.securityStatus);
+      newUploadFiles.push({
+        ...f,
+        scanning: savedStatus.scanning,
+        securityStatus: savedStatus.securityStatus,
+        securityStatusText: savedStatus.securityStatusText,
+        scanResult: savedStatus.scanResult
+      });
+    } else {
+      // 新文件，需要扫描
       const fileName = f.raw?.name || f.name;
-      console.log('文件名:', fileName);
+      console.log('新文件，文件名:', fileName);
       
-      // 检查文件类型是否允许（先黑名单，再白名单）
+      // 检查文件类型是否允许
       if (!isFileAllowed(fileName)) {
         const ext = getFileExtension(fileName);
         console.log('文件类型不允许:', ext);
@@ -1261,50 +1273,20 @@ const handleFileChange = async (file, fileList) => {
         return;
       }
       
-      console.log('文件类型允许，添加到扫描队列');
-      newUploadFiles.push({
-        ...f,
+      // 先设置初始扫描状态并保存到映射
+      const initialStatus = {
         scanning: true,
         securityStatus: 'pending',
-        securityStatusText: i18n.t('scanning') || 'Scanning...'
+        securityStatusText: i18n.t('scanning') || 'Scanning...',
+        scanResult: null
+      };
+      fileScanStatusMap.value.set(f.uid, initialStatus);
+      
+      newUploadFiles.push({
+        ...f,
+        ...initialStatus
       });
       newFilesToScan.push(f);
-    } else {
-      const existingFile = uploadFiles.value.find(existing => existing.uid === f.uid);
-      console.log('已有文件，查找现有状态:', existingFile?.securityStatus);
-      if (existingFile) {
-        // 找到现有文件，保留状态
-        newUploadFiles.push({
-          ...f,
-          scanning: existingFile.scanning,
-          securityStatus: existingFile.securityStatus,
-          securityStatusText: existingFile.securityStatusText,
-          scanResult: existingFile.scanResult
-        });
-      } else {
-        // UID在existingUids中但找不到文件，可能是状态被清空了，当作新文件处理
-        console.log('警告：UID存在但找不到文件，当作新文件处理');
-        const fileName = f.raw?.name || f.name;
-        
-        // 检查文件类型是否允许
-        if (!isFileAllowed(fileName)) {
-          const ext = getFileExtension(fileName);
-          if (isExtensionBlocked(fileName)) {
-            toast.warning(`${i18n.t('fileTypeBlocked') || 'File type blocked'}: .${ext}`);
-          } else {
-            toast.warning(`${i18n.t('unsupportedFileType') || 'Unsupported file type'}: .${ext}`);
-          }
-          return;
-        }
-        
-        newUploadFiles.push({
-          ...f,
-          scanning: true,
-          securityStatus: 'pending',
-          securityStatusText: i18n.t('scanning') || 'Scanning...'
-        });
-        newFilesToScan.push(f);
-      }
     }
   });
   
@@ -1312,6 +1294,7 @@ const handleFileChange = async (file, fileList) => {
   uploadFiles.value = newUploadFiles;
   console.log('uploadFiles.value 更新后:', uploadFiles.value.length, '个文件');
   console.log('需要扫描的文件:', newFilesToScan.length, '个');
+  console.log('状态映射大小:', fileScanStatusMap.value.size);
   
   if (newFilesToScan.length > 0) {
     const formData = new FormData();
@@ -1366,13 +1349,22 @@ const handleFileChange = async (file, fileList) => {
             statusText = i18n.t('unknown') || 'Unknown';
         }
         
-        updatedFiles[uploadIdx] = {
-          ...updatedFiles[uploadIdx],
+        const fileStatus = {
           scanning: false,
           securityStatus: status,
           securityStatusText: statusText,
           scanResult: scanResult
         };
+        
+        // 更新响应式数组
+        updatedFiles[uploadIdx] = {
+          ...updatedFiles[uploadIdx],
+          ...fileStatus
+        };
+        
+        // 同时更新持久化状态映射
+        fileScanStatusMap.value.set(newFile.uid, fileStatus);
+        console.log('更新状态映射:', newFile.uid, status);
       });
       
       // 确保所有新文件都被标记为扫描完成
@@ -1394,15 +1386,21 @@ const handleFileChange = async (file, fileList) => {
       console.error('扫描失败:', error);
       // 使用响应式方式更新文件状态
       const updatedFiles = [...uploadFiles.value];
+      const errorStatus = {
+        scanning: false,
+        securityStatus: 'warning',
+        securityStatusText: i18n.t('scanFailed') || 'Scan Failed',
+        scanResult: null
+      };
       newFilesToScan.forEach(newFile => {
         const uploadIdx = updatedFiles.findIndex(f => f.uid === newFile.uid);
         if (uploadIdx !== -1) {
           updatedFiles[uploadIdx] = {
             ...updatedFiles[uploadIdx],
-            scanning: false,
-            securityStatus: 'warning',
-            securityStatusText: i18n.t('scanFailed') || 'Scan Failed'
+            ...errorStatus
           };
+          // 同时更新持久化状态映射
+          fileScanStatusMap.value.set(newFile.uid, errorStatus);
         }
       });
       uploadFiles.value = updatedFiles;
