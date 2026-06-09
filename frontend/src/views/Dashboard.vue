@@ -262,7 +262,24 @@
         <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
         <div class="el-upload__text">{{ i18n.t('dropFilesHere') }}<em>{{ i18n.t('clickToUpload') }}</em></div>
         <template #tip>
-          <div class="el-upload__tip">{{ i18n.t('uploadTip') }}</div>
+          <div class="el-upload__tip">
+            <span>{{ supportedTypesShort }}</span>
+            <el-tooltip placement="top" :width="400">
+              <template #content>
+                <div class="supported-types-detail">
+                  <div class="types-section">
+                    <strong>{{ i18n.t('supportedTypes') || 'Supported extensions' }}:</strong>
+                    <span>.{{ supportedTypes.allowedExtensions.join(', .') }}</span>
+                  </div>
+                  <div class="types-section">
+                    <strong>{{ i18n.t('maxFileSize') || 'Max file size' }}:</strong>
+                    <span>{{ supportedTypes.maxFileSizeFormatted }}</span>
+                  </div>
+                </div>
+              </template>
+              <el-icon class="info-icon"><QuestionFilled /></el-icon>
+            </el-tooltip>
+          </div>
         </template>
       </el-upload>
       
@@ -651,6 +668,30 @@ const filesToMove = ref([]);
 const uploading = ref(false);
 const renaming = ref(false);
 const deleting = ref(false);
+
+// 支持的文件类型
+const supportedTypes = ref({
+  allowedExtensions: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'docx', 'xlsx', 'pptx', 'txt'],
+  blockedExtensions: [],
+  maxFileSize: 100 * 1024 * 1024,
+  maxFileSizeFormatted: '100.00 MB'
+});
+const supportedTypesShort = computed(() => {
+  const types = supportedTypes.value.allowedExtensions.slice(0, 6);
+  return `${i18n.t('supportedFormats') || 'Supported formats'}: ${types.map(t => t.toUpperCase()).join(', ')}${supportedTypes.value.allowedExtensions.length > 6 ? '...' : ''}`;
+});
+
+// 获取支持的文件类型
+const loadSupportedTypes = async () => {
+  try {
+    const response = await filesAPI.getSupportedTypes();
+    if (response && response.success && response.data) {
+      supportedTypes.value = response.data;
+    }
+  } catch (error) {
+    console.log('加载支持文件类型失败:', error.message);
+  }
+};
 const previewLoading = ref(false);
 const previewFile = ref(null);
 const previewUrl = ref(null);
@@ -912,6 +953,7 @@ const filteredFiles = computed(() => {
 
 onMounted(async () => {
   await loadFiles();
+  loadSupportedTypes();
   if (route.query.search) {
     searchQuery.value = route.query.search;
   }
@@ -1194,13 +1236,13 @@ const getFileExtension = (fileName) => {
 // 检查文件扩展名是否在黑名单中
 const isExtensionBlocked = (fileName) => {
   const ext = getFileExtension(fileName);
-  return blockedExtensions.includes(ext);
+  return (supportedTypes.value.blockedExtensions || []).includes(ext) || blockedExtensions.includes(ext);
 };
 
 // 检查文件扩展名是否在白名单中
 const isExtensionAllowed = (fileName) => {
   const ext = getFileExtension(fileName);
-  return allowedExtensions.includes(ext);
+  return (supportedTypes.value.allowedExtensions || []).includes(ext) || allowedExtensions.includes(ext);
 };
 
 // 检查文件是否允许上传

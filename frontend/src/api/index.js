@@ -39,6 +39,16 @@ apiClient.interceptors.response.use(
       authStore.logout();
       window.location.href = '/login';
     }
+    // 处理业务级别的登录过期错误（状态非401，但错误码为 TOKEN_EXPIRED / UNAUTHORIZED）
+    if (error.response?.data) {
+      const resData = error.response.data;
+      const errCode = resData.error?.code || resData.errorCode || resData.code;
+      if (errCode === 'TOKEN_EXPIRED' || errCode === 'UNAUTHORIZED') {
+        const authStore = useAuthStore();
+        authStore.logout();
+        window.location.href = '/login';
+      }
+    }
     // 改造错误对象，让它包含后端返回的详细信息
     if (error.response?.data) {
       const resData = error.response.data;
@@ -106,6 +116,7 @@ export const filesAPI = {
   getFiles: (params) => apiClient.get('/files', { params }),
   getFile: (id) => apiClient.get(`/files/${id}`),
   previewScan: (formData) => apiClient.post('/files/preview-scan', formData),
+  getSupportedTypes: () => apiClient.get('/files/supported-types'),
   upload: (formData, options = {}) => {
     return apiClient.post('/files/upload', formData, options);
   },

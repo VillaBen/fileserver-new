@@ -13,8 +13,25 @@ const { validateFile, maxFileSize } = require('../middleware/fileValidator');
 const { malwareScan, scanPreview } = require('../middleware/malwareScanner');
 const { validateFilename, validateFoldername } = require('../utils/validators');
 const { sanitizeLikePattern, cryptoRandomString } = require('../utils/security');
+const fileTypesConfig = require('../config/file-types');
 
 const router = express.Router();
+
+// 获取支持的文件类型配置
+router.get('/supported-types', (req, res) => {
+  try {
+    const { allowedExtensions, blockedExtensions, maxFileSize: maxSize } = fileTypesConfig;
+    res.apiSuccess({
+      allowedExtensions,
+      blockedExtensions,
+      maxFileSize: maxSize,
+      maxFileSizeFormatted: (maxSize / (1024 * 1024)).toFixed(2) + ' MB'
+    }, '获取支持的文件类型');
+  } catch (error) {
+    console.error('获取支持的文件类型错误:', error);
+    res.apiError('获取支持的文件类型失败', 'SERVER_ERROR');
+  }
+});
 
 // 配置文件上传
 const storage = multer.diskStorage({
