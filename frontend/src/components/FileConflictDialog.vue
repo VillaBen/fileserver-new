@@ -120,10 +120,7 @@
     </div>
 
     <div v-if="isProcessing" class="processing">
-      <svg class="processing-spinning-icon" width="24" height="24" viewBox="0 0 50 50">
-        <circle cx="25" cy="25" r="20" stroke="#409eff20" stroke-width="4" fill="none" />
-        <circle cx="25" cy="25" r="20" stroke="#409eff" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="80 200" />
-      </svg>
+      <el-icon :size="24" class="processing-spinning-icon"><Loading /></el-icon>
       <span>{{ i18nStore.t('processing') || 'Processing...' }}</span>
     </div>
 
@@ -452,9 +449,8 @@ defineExpose({
 }
 
 .processing-spinning-icon {
-  display: inline-block;
+  display: inline-flex;
   animation: processing-spin 1s linear infinite;
-  transform-origin: center center;
 }
 
 @keyframes processing-spin {

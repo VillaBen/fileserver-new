@@ -295,10 +295,9 @@
           </div>
           <div class="file-security-status">
             <el-tooltip :content="file.securityStatusText || 'Scanning...'" placement="top">
-              <svg v-if="file.scanning" class="scan-spinning-icon" width="18" height="18" viewBox="0 0 50 50">
-                <circle cx="25" cy="25" r="20" stroke="#409eff20" stroke-width="4" fill="none" />
-                <circle cx="25" cy="25" r="20" stroke="#409eff" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="80 200" />
-              </svg>
+              <el-icon v-if="file.scanning" :size="18" class="scan-spinning-icon">
+                <Loading />
+              </el-icon>
               <el-icon v-else :size="18">
                 <CircleCheck v-if="file.securityStatus === 'safe'" class="safe" />
                 <Warning v-else-if="file.securityStatus === 'warning'" class="warning" />
@@ -519,10 +518,7 @@
       width="560px"
     >
       <div v-if="loadingScanResult" class="scan-result-loading">
-        <svg class="scan-result-spinning-icon" width="32" height="32" viewBox="0 0 50 50">
-          <circle cx="25" cy="25" r="20" stroke="#409eff20" stroke-width="4" fill="none" />
-          <circle cx="25" cy="25" r="20" stroke="#409eff" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="80 200" />
-        </svg>
+        <el-icon :size="32" class="scan-result-spinning-icon"><Loading /></el-icon>
         <span>加载中...</span>
       </div>
       <div v-else-if="scanResult" class="scan-result-content">
@@ -2024,8 +2020,7 @@ const copyShareLink = () => {
 .upload-file-item .file-security-status .spinning,
 .scan-spinning-icon {
   animation: scan-spin 1s linear infinite;
-  transform-origin: center center;
-  display: inline-block;
+  display: inline-flex;
 }
 
 @keyframes scan-spin {
@@ -2224,9 +2219,8 @@ const copyShareLink = () => {
 }
 
 .scan-result-spinning-icon {
-  display: inline-block;
+  display: inline-flex;
   animation: scan-result-spin 1s linear infinite;
-  transform-origin: center center;
 }
 
 @keyframes scan-result-spin {

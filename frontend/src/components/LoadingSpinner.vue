@@ -1,49 +1,21 @@
 <template>
-  <div class="loading-spinner" :class="{ 'loading-spinner-overlay': overlay }">
+  <div class="loading-spinner-wrapper" :class="{ 'loading-spinner-overlay': overlay }">
     <div class="loading-spinner-content">
-      <svg
-        class="spinner-svg"
-        :width="size"
-        :height="size"
-        viewBox="0 0 50 50"
-      >
-        <circle
-          class="spinner-track"
-          cx="25"
-          cy="25"
-          r="20"
-          :stroke="trackColor"
-          stroke-width="4"
-          fill="none"
-        />
-        <circle
-          class="spinner-progress"
-          cx="25"
-          cy="25"
-          r="20"
-          :stroke="progressColor"
-          stroke-width="4"
-          fill="none"
-          stroke-linecap="round"
-          stroke-dasharray="80 200"
-        />
-      </svg>
+      <el-icon :size="size" class="spinner-icon">
+        <Loading />
+      </el-icon>
       <p v-if="text" class="loading-spinner-text">{{ text }}</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { Loading } from '@element-plus/icons-vue';
 
 const props = defineProps({
   size: {
     type: Number,
-    default: 48
-  },
-  color: {
-    type: String,
-    default: 'primary'
+    default: 32
   },
   overlay: {
     type: Boolean,
@@ -54,24 +26,10 @@ const props = defineProps({
     default: ''
   }
 });
-
-const colorMap = {
-  primary: '#409eff',
-  success: '#67c23a',
-  warning: '#e6a23c',
-  danger: '#f56c6c',
-  info: '#909399'
-};
-
-const progressColor = computed(() => colorMap[props.color] || colorMap.primary);
-const trackColor = computed(() => {
-  const hex = colorMap[props.color] || colorMap.primary;
-  return hex + '20';
-});
 </script>
 
 <style scoped>
-.loading-spinner {
+.loading-spinner-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -95,9 +53,8 @@ const trackColor = computed(() => {
   gap: 16px;
 }
 
-.spinner-svg {
+.spinner-icon {
   animation: spinner-rotate 1s linear infinite;
-  transform-origin: center;
 }
 
 @keyframes spinner-rotate {
