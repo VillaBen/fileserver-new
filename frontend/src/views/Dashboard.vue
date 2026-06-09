@@ -1119,8 +1119,21 @@ const blockedExtensions = [
   'jar', 'jnlp', 'webstart'
 ];
 
-// 生成文件选择器的 accept 属性
+// 检查是否是移动端设备
+const isMobile = computed(() => {
+  if (typeof window === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+});
+
+// 生成文件选择器的 accept 属性（移动端不限制类型以支持文件管理器）
 const allowedFileTypes = computed(() => {
+  // 移动端使用空的 accept 属性，允许选择所有文件类型
+  // 这样可以唤起完整的文件管理器而不是只显示相册
+  if (isMobile.value) {
+    return '';
+  }
+  
+  // 桌面端使用详细的 MIME 类型限制
   const typeMap = {
     'jpg': 'image/jpeg',
     'jpeg': 'image/jpeg',
@@ -1274,38 +1287,60 @@ const handleFileChange = async (file, fileList) => {
     try {
       const response = await filesAPI.previewScan(formData);
       
-      if (response.success && response.data) {
-        response.data.forEach((scanResult, scanIdx) => {
-          const newFile = newFilesToScan[scanIdx];
-          if (!newFile) return;
-          
-          const uploadIdx = uploadFiles.value.findIndex(f => f.uid === newFile.uid);
-          if (uploadIdx === -1) return;
-          
-          let statusText;
-          switch (scanResult.securityStatus) {
-            case 'safe':
-              statusText = i18n.t('scanResultSafe') || 'Safe';
-              break;
-            case 'warning':
-              statusText = i18n.t('scanResultWarning') || 'Warning';
-              break;
-            case 'dangerous':
-              statusText = i18n.t('scanResultDangerous') || 'Dangerous';
-              break;
-            default:
-              statusText = i18n.t('unknown') || 'Unknown';
-          }
-          
+      if (!response || !response.success) {
+        console.error('扫描响应异常:', response);
+        throw new Error(response?.message || '扫描响应失败');
+      }
+      
+      if (!response.data || !Array.isArray(response.data)) {
+        console.error('扫描结果格式错误:', response.data);
+        throw new Error('扫描结果格式错误');
+      }
+      
+      response.data.forEach((scanResult, scanIdx) => {
+        const newFile = newFilesToScan[scanIdx];
+        if (!newFile) return;
+        
+        const uploadIdx = uploadFiles.value.findIndex(f => f.uid === newFile.uid);
+        if (uploadIdx === -1) return;
+        
+        const status = scanResult.securityStatus || 'unknown';
+        let statusText;
+        switch (status) {
+          case 'safe':
+            statusText = i18n.t('scanResultSafe') || 'Safe';
+            break;
+          case 'warning':
+            statusText = i18n.t('scanResultWarning') || 'Warning';
+            break;
+          case 'dangerous':
+            statusText = i18n.t('scanResultDangerous') || 'Dangerous';
+            break;
+          default:
+            statusText = i18n.t('unknown') || 'Unknown';
+        }
+        
+        uploadFiles.value[uploadIdx] = {
+          ...uploadFiles.value[uploadIdx],
+          scanning: false,
+          securityStatus: status,
+          securityStatusText: statusText,
+          scanResult: scanResult
+        };
+      });
+      
+      // 确保所有新文件都被标记为扫描完成
+      newFilesToScan.forEach(newFile => {
+        const uploadIdx = uploadFiles.value.findIndex(f => f.uid === newFile.uid);
+        if (uploadIdx !== -1 && uploadFiles.value[uploadIdx].scanning) {
           uploadFiles.value[uploadIdx] = {
             ...uploadFiles.value[uploadIdx],
             scanning: false,
-            securityStatus: scanResult.securityStatus,
-            securityStatusText: statusText,
-            scanResult: scanResult
+            securityStatus: 'unknown',
+            securityStatusText: i18n.t('scanTimeout') || 'Scan timeout'
           };
-        });
-      }
+        }
+      });
     } catch (error) {
       console.error('扫描失败:', error);
       newFilesToScan.forEach(newFile => {
