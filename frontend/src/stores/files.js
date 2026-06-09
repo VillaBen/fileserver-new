@@ -152,8 +152,12 @@ export const useFilesStore = defineStore('files', () => {
     activeUploads.value = [];
     completedUploads.value = [];
     failedUploads.value = [];
-    
-    selectedFiles.forEach((file, index) => {
+
+    if (!fileList || fileList.length === 0) {
+      return uploadQueue.value;
+    }
+
+    fileList.forEach((file, index) => {
       uploadQueue.value.push({
         id: `upload-${Date.now()}-${index}`,
         file,
@@ -166,7 +170,7 @@ export const useFilesStore = defineStore('files', () => {
         controller: null,
       });
     });
-    
+
     return uploadQueue.value;
   }
 
