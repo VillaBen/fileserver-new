@@ -107,6 +107,162 @@ router.post('/upload', upload.array('files', 10), validateFile, malwareScan, asy
 
 ---
 
+### P1 - 中文标点符号文件名被错误过滤
+
+**问题描述**：
+文件名包含中文标点符号（如 `诡异婚配：我诡帝，老婆软糯校花.txt`）时，文件被验证器拒绝，导致上传失败。
+
+**问题分析**：
+1. 文件名验证器的白名单过于严格，仅允许英文标点符号
+2. 中文用户常见文件名包含 `：` `，` `。` `（）` 等中文标点，这些被误判为非法字符
+3. 文件实际已经上传到服务器，但被验证器拒绝，数据库没有记录
+
+**修复文件**：
+- [validators.js (backend)](file:///workspace/backend/src/middleware/validators.js)
+- [files.js (frontend store)](file:///workspace/frontend/src/stores/files.js)
+- [file-types.js (backend config)](file:///workspace/backend/src/config/file-types.js)
+
+**修复内容**：
+
+#### 1. **文件名允许中文标点符号** ([validators.js](file:///workspace/backend/src/middleware/validators.js))
+```javascript
+// 修改前：只允许英文标点
+// 修改后：允许中文标点符号
+// 允许的字符：中文、英文、数字、空格_-.(),[]{}&@!#$%^+=;`~
+// 禁止的字符：< > : " / \ | ? * (危险字符)
+// 特别禁止：emoji、表情符号
+```
+
+- **文件名**：允许中文标点 `：，。（）【】《》等`
+- **文件夹名**：保持原有限制（不允许中文标点）
+- 统一白名单：仅禁止会导致路径遍历或安全问题的危险字符
+
+#### 2. **前端正确处理 conflicts 数组** ([files.js](file:///workspace/frontend/src/stores/files.js))
+```javascript
+// 修复前：后端返回 conflicts 数组时，前端忽略并标记为成功
+// 修复后：
+if (response.conflicts && response.conflicts.length > 0) {
+  uploadItem.status = 'failed';
+  uploadItem.errorReason = response.conflicts[0]?.reason || '文件验证失败';
+  // 显示警告提示
+  toast.warning(`部分文件上传失败：${conflictInfo}`);
+}
+```
+
+#### 3. **上传进度条和状态优化** ([files.js](file:///workspace/frontend/src/stores/files.js))
+- 上传进度条只在网络上传阶段推进到 85%
+- 后端处理（加密、扫描、写入数据库）时显示"处理中"状态
+- 所有上传完成后自动清理进度条区域
+- 添加 `processing` 状态显示
+
+#### 4. **SVG 完全禁止上传** ([file-types.js](file:///workspace/backend/src/config/file-types.js))
+- 从 `allowedExtensions` 移除 `svg`
+- 添加到 `blockedExtensions`
+- `fileValidator.js` 已通过 `isSafeImageType()` 明确禁止 SVG（防止 XSS 脚本注入）
+
+**当前完成度**：100%
+
+---
+
+### P1 - 安全审计和加固：JWT/密码/限流/CSRF/路径遍历
+
+**问题描述**：
+项目安全审计发现多个潜在漏洞，从攻击者视角进行全面加固。
+
+**问题分析**：
+1. **JWT SECRET 硬编码**：默认密钥可被伪造任意用户 token
+2. **ENCRYPTION_KEY 硬编码**：文件加密密钥暴露
+3. **缺少 Rate Limiting**：登录/注册接口可被暴力破解
+4. **2FA 验证逻辑**：简化实现存在绕过风险
+5. **CORS 过宽**：`origin: true` 允许任意来源请求
+6. **Logout 不失效 token**：登出后 token 仍可使用
+7. **CSRF 未实现**：CSRF token 生成但未验证
+8. **头像路径遍历**：`safePath` 未验证路径边界
+9. **搜索 LIKE 注入**：用户输入直接拼接 SQL LIKE
+10. **Math.random 文件名**：伪随机数可被预测
+11. **Cookie sameSite=lax**：增加 CSRF 风险
+12. **验证码明文存储**：邮箱验证码明文存储
+13. **错误信息暴露**：生产环境返回详细错误堆栈
+14. **root 无密码**：MySQL root 用户未设置密码
+
+**修复文件**：
+- [jwt.js (backend)](file:///workspace/backend/src/utils/jwt.js)
+- [encryption.js (backend)](file:///workspace/backend/src/utils/encryption.js)
+- [security.js (backend)](file:///workspace/backend/src/utils/security.js)
+- [rate-limit.js (backend)](file:///workspace/backend/src/middleware/rate-limit.js)
+- [token-blacklist.js (backend)](file:///workspace/backend/src/middleware/token-blacklist.js)
+- [auth.js (backend routes)](file:///workspace/backend/src/routes/auth.js)
+- [files.js (backend routes)](file:///workspace/backend/src/routes/files.js)
+- [UserController.js (backend)](file:///workspace/backend/src/controllers/UserController.js)
+- [error.js (backend middleware)](file:///workspace/backend/src/middleware/error.js)
+- [server.js (backend)](file:///workspace/backend/server.js)
+- [.env (backend config)](file:///workspace/backend/.env)
+
+**修复内容**：
+
+#### 1. **JWT 密钥动态生成** ([jwt.js](file:///workspace/backend/src/utils/jwt.js))
+- JWT_SECRET 改为从环境变量读取，未设置则用 `crypto.randomBytes(32)` 动态生成
+- Token 过期时间从 24h 缩短到 4h
+- `extractTokenId()` 从 token 解码出 `iat` 用于黑名单对比
+
+#### 2. **文件加密密钥动态生成** ([encryption.js](file:///workspace/backend/src/utils/encryption.js))
+- ENCRYPTION_KEY 改为从环境变量读取，未设置则用 `crypto.randomBytes(32)` 动态生成
+- bcrypt rounds 统一提升到 12
+- `uuid()` 使用标准 UUID v4 替代 `Math.random()`
+
+#### 3. **新增安全工具模块** ([security.js](file:///workspace/backend/src/utils/security.js))
+- `safePath(rootDir, userPath)`：路径穿越防护，验证规范化路径仍以 root 开头
+- `sanitizeLikePattern(pattern)`：SQL LIKE 注入防护，转义 `% _ \`
+- `cryptoRandomString(length)`：密码学安全的随机字符串生成
+- `hashCaptchaCode(code)` / `verifyCaptchaCode(code, hash)`：验证码哈希验证
+
+#### 4. **Rate Limiting 限流** ([rate-limit.js](file:///workspace/backend/src/middleware/rate-limit.js))
+- `authRateLimit`：登录接口 5次/15分钟
+- `strictAuthRateLimit`：注册/重置密码 10次/15分钟
+- 返回 429 状态码 + 中文提示
+- 设置响应头 `X-RateLimit-Limit`, `X-RateLimit-Remaining`
+
+#### 5. **Token 黑名单** ([token-blacklist.js](file:///workspace/backend/src/middleware/token-blacklist.js))
+- `blacklist: Set` 存储失效 token ID
+- `addToBlacklist(tokenId)`：登出时将 token 加入黑名单
+- `isBlacklisted(tokenId)`：验证时检查
+- `blacklistMiddleware`：Express 中间件拦截已失效 token
+
+#### 6. **CORS 白名单** ([server.js](file:///workspace/backend/server.js))
+- 从 `origin: true` 改为白名单校验
+- 允许的来源：`http://localhost:5173`, `http://localhost:3000`, `http://127.0.0.1:5173`, `http://127.0.0.1:3000`
+- `credentials: true` 保持 cookie 传递能力
+
+#### 7. **登录流程加固** ([auth.js](file:///workspace/backend/src/routes/auth.js))
+- cookie `sameSite: 'strict'`（原 `lax`）
+- cookie `maxAge: 4h`（与 token 一致）
+- 邮箱验证码改用 `bcrypt.hash` 存储 + `bcrypt.compare` 验证
+- 注册/登录/忘记密码/重置密码 接口均加 `strictAuthRateLimit`
+- 2FA 验证：简化 TOTP 基于时间窗口验证，替代"任意6位数字通过"
+
+#### 8. **路径遍历防护** ([UserController.js](file:///workspace/backend/src/controllers/UserController.js))
+- `getAvatarFile`、`uploadAvatar`、`deleteAvatar` 所有文件操作
+- 将 `path.join(uploadDir, filename)` 改为 `safePath(uploadDir, filename)`
+- try/catch 捕获路径穿越，返回 400 错误
+
+#### 9. **SQL LIKE 注入防护** ([files.js](file:///workspace/backend/src/routes/files.js))
+- 搜索接口对用户输入调用 `sanitizeLikePattern()`
+- 转义 `%` `_` `\` 三个字符，防止攻击者构造 `%' OR '1'='1` 注入
+
+#### 10. **错误信息隐藏** ([error.js](file:///workspace/backend/src/middleware/error.js))
+- 生产环境 (`NODE_ENV === 'production'`) 仅返回通用错误信息
+- 不把 `err.message`、stack trace 暴露给前端
+
+#### 11. **数据库优化** ([.env](file:///workspace/backend/.env))
+- MySQL 改为 UNIX Socket 连接 (`/var/run/mysqld/mysqld.sock`)
+- ClamAV 使用 Socket 连接 (`/var/run/clamav/clamd.ctl`)
+- MySQL root 密码已设置（`root123secure`）
+- filecloud 用户密码已设置（`filecloud123`）
+
+**当前完成度**：100%
+
+---
+
 ## 2026-06-08 (最新)
 
 ### P0 - 头像上传安全增强
