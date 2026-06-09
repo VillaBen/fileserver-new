@@ -12,6 +12,7 @@ const { encryptFile, decryptFileToStream, getFileHash } = require('../utils/encr
 const { validateFile, maxFileSize } = require('../middleware/fileValidator');
 const { malwareScan, scanPreview } = require('../middleware/malwareScanner');
 const { validateFilename, validateFoldername } = require('../utils/validators');
+const { sanitizeLikePattern, cryptoRandomString } = require('../utils/security');
 
 const router = express.Router();
 
@@ -25,7 +26,7 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix = Date.now() + '-' + crypto.randomBytes(8).toString('hex');
     cb(null, uniqueSuffix + '-' + file.originalname);
   }
 });
@@ -250,9 +251,10 @@ router.post('/search', async (req, res) => {
       return res.apiError('搜索关键词不能为空', 'VALIDATION_ERROR');
     }
 
+    console.log('[安全] 搜索关键词已转义:', query);
     const files = await db.asyncAll(
       'SELECT * FROM files WHERE account_id = ? AND in_trash = 0 AND original_name LIKE ? ORDER BY created_at DESC',
-      [user.id, `%${query}%`]
+      [user.id, `%${sanitizeLikePattern(query)}%`]
     );
 
     const formattedFiles = files.map(file => ({
@@ -718,7 +720,7 @@ router.post('/folders', async (req, res) => {
         // 保留两个：重命名新文件夹
         const newName = await generateUniqueName(user.id, parentId, name);
         // 为文件夹生成唯一的filename（使用时间戳和随机数）
-        const folderFilename = `folder_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const folderFilename = `folder_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
         // 创建新文件夹
         const result = await db.asyncRun(
           'INSERT INTO files (account_id, original_name, filename, filepath, size, mime_type, folder_id, type, is_encrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -755,7 +757,7 @@ router.post('/folders', async (req, res) => {
 
     // 创建文件夹记录
     // 为文件夹生成唯一的filename（使用时间戳和随机数，避免与回收站中的文件夹冲突）
-    const folderFilename = `folder_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const folderFilename = `folder_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
     const result = await db.asyncRun(
       'INSERT INTO files (account_id, original_name, filename, filepath, size, mime_type, folder_id, type, is_encrypted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [

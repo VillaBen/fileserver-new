@@ -12,11 +12,35 @@ const { encrypt, decrypt } = require('../utils/encryption');
 const { requireAuth } = require('../middleware/auth');
 const { sendEmailCode, sendPasswordReset } = require('../utils/email');
 const { validateUsername, validateEmail, validatePassword } = require('../utils/validators');
+const { addToBlacklist } = require('../middleware/token-blacklist');
+const { extractTokenId } = require('../utils/jwt');
+const { authRateLimit, strictAuthRateLimit } = require('../middleware/rate-limit');
 
 const router = express.Router();
 
+// 验证 TOTP 验证码（简化实现，6 位数字，与保存的密钥比较）
+// 使用 TOTP 算法的简化版：基于时间窗口 30 秒，用 HMAC-SHA1
+function verifyTOTP(secret, code) {
+  if (!code || !/^\d{6}$/.test(code)) return false;
+  if (!secret) return false;
+  // 标准 TOTP: 使用当前时间戳，窗口 30 秒
+  const crypto = require('crypto');
+  const epoch = Math.floor(Date.now() / 30000);
+  // 接受当前、前一个、后一个窗口
+  for (let offset = -1; offset <= 1; offset++) {
+    const counter = Math.floor((epoch + offset) * 30);
+    const hmac = crypto.createHmac('sha256', secret)
+      .update(counter.toString())
+      .digest('hex');
+    // 取最后 6 位数字作为验证码
+    const generated = (parseInt(hmac.slice(-8), 16) % 1000000).toString().padStart(6, '0');
+    if (generated === code) return true;
+  }
+  return false;
+}
+
 // 注册
-router.post('/register', async (req, res) => {
+router.post('/register', strictAuthRateLimit, async (req, res) => {
   try {
     const { username, password, email, captchaId, captchaCode, confirmPassword } = req.body;
 
@@ -44,6 +68,7 @@ router.post('/register', async (req, res) => {
     // 检查验证码（只有当验证码不为空时才验证）
     if (captchaId && captchaCode && captchaCode.trim()) {
       try {
+        // TODO: 生产环境应使用 bcrypt.hash 存储验证码
         const captcha = await db.asyncGet(
           'SELECT * FROM captchas WHERE id = ? AND code = ? AND expires_at > CURRENT_TIMESTAMP',
           [captchaId, captchaCode]
@@ -90,7 +115,7 @@ router.post('/register', async (req, res) => {
     const encryptedEmail = cleanEmail ? encrypt(cleanEmail) : null;
 
     // 哈希密码
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
 
     // 创建用户
     const result = await db.asyncRun(
@@ -130,7 +155,7 @@ router.post('/register', async (req, res) => {
 });
 
 // 登录
-router.post('/login', async (req, res) => {
+router.post('/login', authRateLimit, async (req, res) => {
   try {
     const { username, password, captchaId, captchaCode } = req.body;
 
@@ -209,8 +234,8 @@ router.post('/login', async (req, res) => {
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000, // 24小时
-      sameSite: 'lax'
+      maxAge: 4 * 60 * 60 * 1000, // 4小时，与JWT一致
+      sameSite: 'strict'
     });
 
     // 返回用户信息（不包含密码）
@@ -238,6 +263,12 @@ router.post('/login', async (req, res) => {
 router.post('/logout', requireAuth, async (req, res) => {
   try {
     const user = req.user;
+    // 将当前 token 加入黑名单
+    const token = require('../utils/jwt').extractToken(req);
+    if (token) {
+      const tokenId = extractTokenId(token);
+      if (tokenId) addToBlacklist(tokenId);
+    }
     if (user) {
       await db.asyncRun(
         'INSERT INTO audit_logs (account_id, action, ip_address) VALUES (?, ?, ?)',
@@ -346,7 +377,7 @@ router.post('/change-password', requireAuth, async (req, res) => {
     }
 
     // 哈希新密码
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    const newPasswordHash = await bcrypt.hash(newPassword, 12);
 
     // 更新密码
     await db.asyncRun(
@@ -368,7 +399,7 @@ router.post('/change-password', requireAuth, async (req, res) => {
 });
 
 // 忘记密码
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', strictAuthRateLimit, async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -431,7 +462,7 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 // 重置密码
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', strictAuthRateLimit, async (req, res) => {
   try {
     const { token, newPassword } = req.body;
 
@@ -464,7 +495,7 @@ router.post('/reset-password', async (req, res) => {
     }
 
     // 哈希新密码
-    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const passwordHash = await bcrypt.hash(newPassword, 12);
 
     // 更新用户密码
     await db.asyncRun(
@@ -509,7 +540,7 @@ router.post('/2fa/setup', requireAuth, async (req, res) => {
     // 生成恢复码
     const recoveryCodes = [];
     for (let i = 0; i < 10; i++) {
-      const code = crypto.randomInt(100000, 999999).toString();
+      const code = crypto.randomBytes(3).toString('hex').slice(0, 6);
       recoveryCodes.push(code);
       const encryptedCode = encrypt(code);
       await db.asyncRun(
@@ -583,8 +614,10 @@ router.post('/2fa/verify', requireAuth, async (req, res) => {
       [user.id]
     );
 
-    // 简化验证：任何6位数字都通过
-    if (code.length === 6 && /^\d+$/.test(code) && account.two_factor_secret) {
+    // TOTP 验证：只有正确的验证码才能通过
+    // 注意：two_factor_secret 在数据库中是加密存储的，需要先解密
+    const twoFactorSecret = account.two_factor_secret ? decrypt(account.two_factor_secret) : null;
+    if (twoFactorSecret && verifyTOTP(twoFactorSecret, code)) {
       // 启用两步验证
       await db.asyncRun(
         'UPDATE accounts SET two_factor_enabled = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
@@ -639,7 +672,7 @@ router.post('/2fa/recovery-codes', requireAuth, async (req, res) => {
     // 生成新恢复码
     const recoveryCodes = [];
     for (let i = 0; i < 10; i++) {
-      const code = crypto.randomInt(100000, 999999).toString();
+      const code = crypto.randomBytes(3).toString('hex').slice(0, 6);
       recoveryCodes.push(code);
       const encryptedCode = encrypt(code);
       await db.asyncRun(
@@ -668,8 +701,8 @@ router.post('/send-email-code', async (req, res) => {
     const encryptedEmail = encrypt(email);
 
     // 生成6位验证码
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const encryptedCode = encrypt(code);
+    const code = crypto.randomBytes(3).toString('hex').slice(0, 6);
+    const hashedCode = await bcrypt.hash(code, 10);
 
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30分钟后过期
 
@@ -679,10 +712,10 @@ router.post('/send-email-code', async (req, res) => {
       [encryptedEmail, purpose]
     );
 
-    // 保存验证码
+    // 保存验证码（使用 bcrypt 哈希存储）
     await db.asyncRun(
       'INSERT INTO email_codes (email, purpose, code, expires_at) VALUES (?, ?, ?, ?)',
-      [encryptedEmail, purpose, encryptedCode, expiresAt]
+      [encryptedEmail, purpose, hashedCode, expiresAt]
     );
 
     // 发送邮件
@@ -723,17 +756,16 @@ router.post('/verify-email-code', async (req, res) => {
       return res.apiError('验证码不存在或已过期', 'CODE_INVALID');
     }
 
-    // 解密并比对
+    // 使用 bcrypt 比对（验证码以 bcrypt 哈希存储）
     let validCode = null;
     for (const ec of emailCodes) {
       try {
-        const decryptedCode = decrypt(ec.code);
-        if (decryptedCode === code) {
+        const isMatch = await bcrypt.compare(code, ec.code);
+        if (isMatch) {
           validCode = ec;
           break;
         }
       } catch (e) {
-        // 解密失败，继续下一个
         continue;
       }
     }

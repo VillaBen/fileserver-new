@@ -3,9 +3,22 @@
  */
 
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'filecloud-jwt-secret-key-for-development-only';
-const JWT_EXPIRES_IN = '24h';
+let _cachedJwtSecret = null;
+function getJwtSecret() {
+  if (_cachedJwtSecret) return _cachedJwtSecret;
+  const envSecret = process.env.JWT_SECRET;
+  if (!envSecret || envSecret === 'filecloud-jwt-secret-key-for-development-only') {
+    _cachedJwtSecret = crypto.randomBytes(32).toString('hex');
+  } else {
+    _cachedJwtSecret = envSecret;
+  }
+  return _cachedJwtSecret;
+}
+
+const JWT_SECRET = getJwtSecret();
+const JWT_EXPIRES_IN = '4h';
 
 /**
  * 生成 JWT Token
@@ -16,9 +29,10 @@ function generateToken(user) {
   const payload = {
     id: user.id,
     username: user.username,
-    role: user.role
+    role: user.role,
+    iat: Date.now()
   };
-  
+
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
@@ -42,17 +56,33 @@ function verifyToken(token) {
  */
 function extractToken(req) {
   const authHeader = req.headers.authorization;
-  
+
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.slice(7);
   }
-  
+
   return req.cookies.token || null;
+}
+
+/**
+ * 从 token 中提取 iat 作为唯一 ID
+ * @param {string} token
+ * @returns {string|null}
+ */
+function extractTokenId(token) {
+  try {
+    const decoded = jwt.decode(token);
+    if (!decoded || typeof decoded.iat === 'undefined') return null;
+    return decoded.iat.toString();
+  } catch (error) {
+    return null;
+  }
 }
 
 module.exports = {
   generateToken,
   verifyToken,
   extractToken,
+  extractTokenId,
   JWT_SECRET
 };

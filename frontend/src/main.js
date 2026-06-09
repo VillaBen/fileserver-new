@@ -42,5 +42,9 @@ app.config.warnHandler = (msg, vm, trace) => {
 // Mount app
 app.mount('#app');
 
+// 隐藏 index.html 的 loading 屏
+const loading = document.querySelector('.loading-screen');
+if (loading) loading.classList.add('hidden');
+
 console.log('%c📁 FileCloud', 'color: #667eea; font-size: 20px; font-weight: bold;');
 console.log('%cWelcome to FileCloud - Your personal file management system', 'color: #764ba2;');

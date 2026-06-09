@@ -9,9 +9,20 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 
-// 密钥 (生产环境应放在环境变量中)
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-32-byte-key-for-filecloud'; // 32 bytes for AES-256
-const IV_LENGTH = 16; // For AES, this is always 16 bytes
+let _cachedEncryptionKey = null;
+function getEncryptionKey() {
+  if (_cachedEncryptionKey) return _cachedEncryptionKey;
+  const envKey = process.env.ENCRYPTION_KEY;
+  if (!envKey) {
+    _cachedEncryptionKey = crypto.randomBytes(32).toString('hex');
+  } else {
+    _cachedEncryptionKey = envKey;
+  }
+  return _cachedEncryptionKey.slice(0, 32);
+}
+
+const ENCRYPTION_KEY = getEncryptionKey();
+const IV_LENGTH = 16;
 const ALGORITHM = 'aes-256-cbc';
 
 /**
@@ -23,10 +34,10 @@ function encrypt(text) {
   const iv = crypto.randomBytes(IV_LENGTH);
   const key = Buffer.from(ENCRYPTION_KEY.slice(0, 32), 'utf-8');
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-  
+
   let encrypted = cipher.update(text);
   encrypted = Buffer.concat([encrypted, cipher.final()]);
-  
+
   return iv.toString('hex') + ':' + encrypted.toString('hex');
 }
 
@@ -39,17 +50,17 @@ function decrypt(encryptedText) {
   if (!encryptedText || !encryptedText.includes(':')) {
     return encryptedText;
   }
-  
+
   const parts = encryptedText.split(':');
   const iv = Buffer.from(parts.shift(), 'hex');
   const encrypted = Buffer.from(parts.join(':'), 'hex');
   const key = Buffer.from(ENCRYPTION_KEY.slice(0, 32), 'utf-8');
-  
+
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-  
+
   let decrypted = decipher.update(encrypted);
   decrypted = Buffer.concat([decrypted, decipher.final()]);
-  
+
   return decrypted.toString();
 }
 
@@ -59,8 +70,7 @@ function decrypt(encryptedText) {
  * @returns {Promise<string>} hashed password
  */
 async function hashPassword(password) {
-  const saltRounds = 12;
-  return bcrypt.hash(password, saltRounds);
+  return bcrypt.hash(password, 12);
 }
 
 /**
@@ -97,11 +107,17 @@ function randomString(length = 32) {
  * @returns {string}
  */
 function uuid() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+  const bytes = crypto.randomBytes(16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString('hex');
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20, 32)
+  ].join('-');
 }
 
 /**
@@ -115,18 +131,18 @@ function encryptFile(inputPath, outputPath) {
     const iv = crypto.randomBytes(IV_LENGTH);
     const key = Buffer.from(ENCRYPTION_KEY.slice(0, 32), 'utf-8');
     const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-    
+
     const output = outputPath || inputPath + '.enc';
-    
+
     const inputStream = fs.createReadStream(inputPath);
     const outputStream = fs.createWriteStream(output);
-    
+
     outputStream.write(iv);
-    
+
     inputStream.on('error', reject);
     outputStream.on('error', reject);
     outputStream.on('finish', () => resolve(output));
-    
+
     inputStream.pipe(cipher).pipe(outputStream);
   });
 }
@@ -141,17 +157,17 @@ function decryptFile(inputPath, outputPath) {
   return new Promise((resolve, reject) => {
     fs.readFile(inputPath, (err, data) => {
       if (err) return reject(err);
-      
+
       const iv = data.slice(0, IV_LENGTH);
       const encrypted = data.slice(IV_LENGTH);
       const key = Buffer.from(ENCRYPTION_KEY.slice(0, 32), 'utf-8');
-      
+
       const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-      
+
       try {
         let decrypted = decipher.update(encrypted);
         decrypted = Buffer.concat([decrypted, decipher.final()]);
-        
+
         if (outputPath) {
           fs.writeFile(outputPath, decrypted, (err) => {
             if (err) reject(err);
@@ -176,22 +192,22 @@ function decryptFileToStream(inputPath) {
   return new Promise((resolve, reject) => {
     fs.readFile(inputPath, (err, data) => {
       if (err) return reject(err);
-      
+
       const iv = data.slice(0, IV_LENGTH);
       const encrypted = data.slice(IV_LENGTH);
       const key = Buffer.from(ENCRYPTION_KEY.slice(0, 32), 'utf-8');
-      
+
       const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-      
+
       try {
         let decrypted = decipher.update(encrypted);
         decrypted = Buffer.concat([decrypted, decipher.final()]);
-        
+
         const { Readable } = require('stream');
         const stream = new Readable();
         stream.push(decrypted);
         stream.push(null);
-        
+
         resolve(stream);
       } catch (e) {
         reject(e);
@@ -209,7 +225,7 @@ function getFileHash(filePath) {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash('sha256');
     const stream = fs.createReadStream(filePath);
-    
+
     stream.on('error', reject);
     stream.on('data', (data) => hash.update(data));
     stream.on('end', () => resolve(hash.digest('hex')));

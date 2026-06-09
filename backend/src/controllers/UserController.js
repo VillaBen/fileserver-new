@@ -5,6 +5,7 @@
 const { db } = require('../config/database.adapter');
 const { encrypt, decrypt, hashPassword, verifyPassword } = require('../utils/encryption');
 const { validateUsername, validateEmail, validateDisplayName } = require('../utils/validators');
+const { safePath } = require('../utils/security');
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
@@ -457,7 +458,12 @@ const uploadAvatar = async (req, res) => {
     const fileExtension = safeExtensions.includes(originalExt) ? originalExt : '.png';
     
     const filename = `avatar-${uuidv4()}${fileExtension}`;
-    const filePath = path.join(uploadDir, filename);
+    let filePath;
+    try {
+      filePath = safePath(uploadDir, filename);
+    } catch (e) {
+      return res.apiError('无效的文件名', 'INVALID_FILENAME');
+    }
 
     console.log('[Backend-Avatar] 4. 保存文件到:', filePath);
     fs.writeFileSync(filePath, file.buffer);
@@ -471,8 +477,13 @@ const uploadAvatar = async (req, res) => {
     console.log('[Backend-Avatar] 6. 旧头像信息:', profile);
     
     if (profile && profile.avatar) {
-      const oldAvatarPath = path.join(uploadDir, profile.avatar);
-      if (fs.existsSync(oldAvatarPath)) {
+      let oldAvatarPath;
+      try {
+        oldAvatarPath = safePath(uploadDir, profile.avatar);
+      } catch (e) {
+        console.log('[Backend-Avatar] 7. 旧头像路径不安全，跳过删除');
+      }
+      if (oldAvatarPath && fs.existsSync(oldAvatarPath)) {
         console.log('[Backend-Avatar] 7. 删除旧头像:', oldAvatarPath);
         fs.unlinkSync(oldAvatarPath);
       }
@@ -515,8 +526,13 @@ const deleteAvatar = async (req, res) => {
 
     if (profile && profile.avatar) {
       const uploadDir = path.join(__dirname, '../../uploads');
-      const avatarPath = path.join(uploadDir, profile.avatar);
-      if (fs.existsSync(avatarPath)) {
+      let avatarPath;
+      try {
+        avatarPath = safePath(uploadDir, profile.avatar);
+      } catch (e) {
+        console.log('[deleteAvatar] 头像路径不安全，跳过删除');
+      }
+      if (avatarPath && fs.existsSync(avatarPath)) {
         fs.unlinkSync(avatarPath);
       }
 
@@ -564,7 +580,13 @@ const getAvatarFile = async (req, res) => {
     }
     
     const uploadDir = path.join(__dirname, '../../uploads');
-    const filePath = path.join(uploadDir, filename);
+    let filePath;
+    try {
+      filePath = safePath(uploadDir, filename);
+    } catch (e) {
+      console.log('[Backend-getAvatarFile] 4. 路径穿越检测，拒绝请求');
+      return res.status(400).send('Invalid filename');
+    }
     
     console.log('[Backend-getAvatarFile] 4. 文件路径:', filePath);
     

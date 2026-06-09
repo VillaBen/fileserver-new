@@ -3,8 +3,7 @@ module.exports = {
   // 禁止所有可执行脚本、配置文件、数据库文件、证书密钥等高危文件
   allowedExtensions: [
     // 图片（低风险，仅显示不执行）
-    'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tiff', 'tif',
-    
+    'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'ico', 'tiff', 'tif',    
     // PDF文档（中等风险，需安全扫描）
     'pdf',
     
@@ -41,7 +40,6 @@ module.exports = {
     'gif': ['47494638'],
     'webp': ['52494646'],
     'bmp': ['424d'],
-    'svg': ['3c737667'],  // SVG以<svg>开头
     'ico': ['00000100'],  // ICO文件头
     'tiff': ['49492a00', '4d4d002a'],  // TIFF小端和大端
     'tif': ['49492a00', '4d4d002a'],
@@ -72,6 +70,9 @@ module.exports = {
 
   // 禁止的危险文件扩展名（按风险类别分组）
   blockedExtensions: [
+    // SVG（可能包含恶意脚本/XSS）
+    'svg',
+
     // 可执行文件和脚本
     'exe', 'bat', 'cmd', 'com', 'scr', 'pif', 'msi', 'msp', 'mst',
     'dll', 'sys', 'ocx', 'cpl', 'drv', 'so',
