@@ -222,13 +222,11 @@ function validateFilename(filename, requireExtension = true) {
     errors.push('文件名不能包含emoji、表情符号或特殊装饰字符');
   }
   
-  // 检查是否包含中文标点符号
-  if (CHINESE_PUNCTUATION_REGEX.test(trimmed)) {
-    errors.push('文件名只能使用英文标点符号（(),[],{}等），不能使用中文标点（），【】，等）');
-  }
-  
-  if (!SAFE_FILENAME_REGEX.test(trimmed)) {
-    errors.push('文件名只能包含中文、英文、数字和英文标点符号（空格_-.(),[]{}&@!#$%^+=;`~）');
+  // 文件名允许中文标点符号（用户需求），只检查危险字符和基本格式
+  // 危险字符检查：< > : " / \ | ? * 以及控制字符
+  const DANGEROUS_CHARS_REGEX = /[<>:"\/|?*\x00-\x1F]/;
+  if (DANGEROUS_CHARS_REGEX.test(trimmed)) {
+    errors.push('文件名不能包含危险字符（< > : " / \\ | ? *）');
   }
   
   // 检查是否以.开头（隐藏文件）
