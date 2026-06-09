@@ -1,7 +1,7 @@
 <template>
   <div class="loading-spinner" :class="{ 'loading-spinner-overlay': overlay }">
     <div class="loading-spinner-content">
-      <el-icon :size="size" :class="spinnerClass" class="is-loading">
+      <el-icon :size="size" :class="[spinnerClass, 'spinner-icon']">
         <Loading />
       </el-icon>
       <p v-if="text" class="loading-spinner-text">{{ text }}</p>
@@ -58,6 +58,21 @@ const spinnerClass = computed(() => `loading-spinner-icon-${props.color}`);
   flex-direction: column;
   align-items: center;
   gap: 16px;
+}
+
+.spinner-icon {
+  display: inline-flex;
+  animation: spinner-rotate 1s linear infinite;
+  transform-origin: center center;
+}
+
+@keyframes spinner-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-spinner-icon-primary {

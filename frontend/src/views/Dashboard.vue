@@ -296,7 +296,7 @@
           <div class="file-security-status">
             <el-tooltip :content="file.securityStatusText || 'Scanning...'" placement="top">
               <el-icon :size="18">
-                <Loading v-if="file.scanning" class="spinning" />
+                <Loading v-if="file.scanning" class="scan-spinning-icon" />
                 <CircleCheck v-else-if="file.securityStatus === 'safe'" class="safe" />
                 <Warning v-else-if="file.securityStatus === 'warning'" class="warning" />
                 <CircleClose v-else-if="file.securityStatus === 'dangerous'" class="danger" />
@@ -516,7 +516,7 @@
       width="560px"
     >
       <div v-if="loadingScanResult" class="scan-result-loading">
-        <el-icon class="is-loading"><Loading /></el-icon>
+        <el-icon class="scan-spinning-icon"><Loading /></el-icon>
         <span>加载中...</span>
       </div>
       <div v-else-if="scanResult" class="scan-result-content">
@@ -2015,11 +2015,14 @@ const copyShareLink = () => {
   color: var(--el-text-color-placeholder);
 }
 
-.upload-file-item .file-security-status .spinning {
-  animation: spin 1s linear infinite;
+.upload-file-item .file-security-status .spinning,
+.scan-spinning-icon {
+  animation: scan-spin 1s linear infinite;
+  transform-origin: center center;
+  display: inline-flex;
 }
 
-@keyframes spin {
+@keyframes scan-spin {
   from {
     transform: rotate(0deg);
   }
