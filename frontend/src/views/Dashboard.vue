@@ -1297,11 +1297,14 @@ const handleFileChange = async (file, fileList) => {
         throw new Error('扫描结果格式错误');
       }
       
+      // 使用响应式方式更新文件状态
+      const updatedFiles = [...uploadFiles.value];
+      
       response.data.forEach((scanResult, scanIdx) => {
         const newFile = newFilesToScan[scanIdx];
         if (!newFile) return;
         
-        const uploadIdx = uploadFiles.value.findIndex(f => f.uid === newFile.uid);
+        const uploadIdx = updatedFiles.findIndex(f => f.uid === newFile.uid);
         if (uploadIdx === -1) return;
         
         const status = scanResult.securityStatus || 'unknown';
@@ -1320,8 +1323,8 @@ const handleFileChange = async (file, fileList) => {
             statusText = i18n.t('unknown') || 'Unknown';
         }
         
-        uploadFiles.value[uploadIdx] = {
-          ...uploadFiles.value[uploadIdx],
+        updatedFiles[uploadIdx] = {
+          ...updatedFiles[uploadIdx],
           scanning: false,
           securityStatus: status,
           securityStatusText: statusText,
@@ -1331,29 +1334,35 @@ const handleFileChange = async (file, fileList) => {
       
       // 确保所有新文件都被标记为扫描完成
       newFilesToScan.forEach(newFile => {
-        const uploadIdx = uploadFiles.value.findIndex(f => f.uid === newFile.uid);
-        if (uploadIdx !== -1 && uploadFiles.value[uploadIdx].scanning) {
-          uploadFiles.value[uploadIdx] = {
-            ...uploadFiles.value[uploadIdx],
+        const uploadIdx = updatedFiles.findIndex(f => f.uid === newFile.uid);
+        if (uploadIdx !== -1 && updatedFiles[uploadIdx].scanning) {
+          updatedFiles[uploadIdx] = {
+            ...updatedFiles[uploadIdx],
             scanning: false,
             securityStatus: 'unknown',
             securityStatusText: i18n.t('scanTimeout') || 'Scan timeout'
           };
         }
       });
+      
+      // 重新赋值触发响应式更新
+      uploadFiles.value = updatedFiles;
     } catch (error) {
       console.error('扫描失败:', error);
+      // 使用响应式方式更新文件状态
+      const updatedFiles = [...uploadFiles.value];
       newFilesToScan.forEach(newFile => {
-        const uploadIdx = uploadFiles.value.findIndex(f => f.uid === newFile.uid);
+        const uploadIdx = updatedFiles.findIndex(f => f.uid === newFile.uid);
         if (uploadIdx !== -1) {
-          uploadFiles.value[uploadIdx] = {
-            ...uploadFiles.value[uploadIdx],
+          updatedFiles[uploadIdx] = {
+            ...updatedFiles[uploadIdx],
             scanning: false,
             securityStatus: 'warning',
             securityStatusText: i18n.t('scanFailed') || 'Scan Failed'
           };
         }
       });
+      uploadFiles.value = updatedFiles;
       toast.error(i18n.t('scanFailed') || '扫描失败');
     }
   }
