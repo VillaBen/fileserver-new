@@ -295,9 +295,12 @@
           </div>
           <div class="file-security-status">
             <el-tooltip :content="file.securityStatusText || 'Scanning...'" placement="top">
-              <el-icon :size="18">
-                <Loading v-if="file.scanning" class="scan-spinning-icon" />
-                <CircleCheck v-else-if="file.securityStatus === 'safe'" class="safe" />
+              <svg v-if="file.scanning" class="scan-spinning-icon" width="18" height="18" viewBox="0 0 50 50">
+                <circle cx="25" cy="25" r="20" stroke="#409eff20" stroke-width="4" fill="none" />
+                <circle cx="25" cy="25" r="20" stroke="#409eff" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="80 200" />
+              </svg>
+              <el-icon v-else :size="18">
+                <CircleCheck v-if="file.securityStatus === 'safe'" class="safe" />
                 <Warning v-else-if="file.securityStatus === 'warning'" class="warning" />
                 <CircleClose v-else-if="file.securityStatus === 'dangerous'" class="danger" />
                 <QuestionFilled v-else class="unknown" />
@@ -516,7 +519,10 @@
       width="560px"
     >
       <div v-if="loadingScanResult" class="scan-result-loading">
-        <el-icon class="scan-result-spinning-icon"><Loading /></el-icon>
+        <svg class="scan-result-spinning-icon" width="32" height="32" viewBox="0 0 50 50">
+          <circle cx="25" cy="25" r="20" stroke="#409eff20" stroke-width="4" fill="none" />
+          <circle cx="25" cy="25" r="20" stroke="#409eff" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="80 200" />
+        </svg>
         <span>加载中...</span>
       </div>
       <div v-else-if="scanResult" class="scan-result-content">
@@ -2017,9 +2023,9 @@ const copyShareLink = () => {
 
 .upload-file-item .file-security-status .spinning,
 .scan-spinning-icon {
-  animation: scan-spin 1s linear infinite !important;
-  transform-origin: center center !important;
-  display: inline-flex !important;
+  animation: scan-spin 1s linear infinite;
+  transform-origin: center center;
+  display: inline-block;
 }
 
 @keyframes scan-spin {
@@ -2218,9 +2224,9 @@ const copyShareLink = () => {
 }
 
 .scan-result-spinning-icon {
-  display: inline-flex !important;
-  animation: scan-result-spin 1s linear infinite !important;
-  transform-origin: center center !important;
+  display: inline-block;
+  animation: scan-result-spin 1s linear infinite;
+  transform-origin: center center;
 }
 
 @keyframes scan-result-spin {

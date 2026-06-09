@@ -94,7 +94,11 @@
                 />
               </div>
               <div v-if="usernameCheckStatus === 'checking'" class="validation-message checking">
-                <el-icon><Loading /></el-icon> {{ i18n.t('checking') }}
+                <svg class="register-checking-icon" width="16" height="16" viewBox="0 0 50 50">
+                  <circle cx="25" cy="25" r="20" stroke="#90939920" stroke-width="4" fill="none" />
+                  <circle cx="25" cy="25" r="20" stroke="#909399" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="80 200" />
+                </svg>
+                {{ i18n.t('checking') }}
               </div>
               <div v-else-if="usernameCheckStatus === 'available'" class="validation-message success">
                 <el-icon><CircleCheck /></el-icon> {{ i18n.t('usernameAvailable') }}
@@ -132,7 +136,11 @@
                 />
               </div>
               <div v-if="emailCheckStatus === 'checking'" class="validation-message checking">
-                <el-icon><Loading /></el-icon> {{ i18n.t('checking') }}
+                <svg class="register-checking-icon" width="16" height="16" viewBox="0 0 50 50">
+                  <circle cx="25" cy="25" r="20" stroke="#90939920" stroke-width="4" fill="none" />
+                  <circle cx="25" cy="25" r="20" stroke="#909399" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="80 200" />
+                </svg>
+                {{ i18n.t('checking') }}
               </div>
               <div v-else-if="emailCheckStatus === 'available'" class="validation-message success">
                 <el-icon><CircleCheck /></el-icon> {{ i18n.t('emailAvailable') }}
@@ -846,6 +854,21 @@ async function handleRegister() {
 
 .validation-message.error {
   color: var(--el-color-danger);
+}
+
+.register-checking-icon {
+  display: inline-block;
+  animation: register-spin 1s linear infinite;
+  transform-origin: center center;
+}
+
+@keyframes register-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .filter-warning {

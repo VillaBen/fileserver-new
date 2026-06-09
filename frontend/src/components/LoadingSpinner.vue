@@ -1,9 +1,33 @@
 <template>
   <div class="loading-spinner" :class="{ 'loading-spinner-overlay': overlay }">
     <div class="loading-spinner-content">
-      <el-icon :size="size" :class="[spinnerClass, 'spinner-icon']">
-        <Loading />
-      </el-icon>
+      <svg
+        class="spinner-svg"
+        :width="size"
+        :height="size"
+        viewBox="0 0 50 50"
+      >
+        <circle
+          class="spinner-track"
+          cx="25"
+          cy="25"
+          r="20"
+          :stroke="trackColor"
+          stroke-width="4"
+          fill="none"
+        />
+        <circle
+          class="spinner-progress"
+          cx="25"
+          cy="25"
+          r="20"
+          :stroke="progressColor"
+          stroke-width="4"
+          fill="none"
+          stroke-linecap="round"
+          stroke-dasharray="80 200"
+        />
+      </svg>
       <p v-if="text" class="loading-spinner-text">{{ text }}</p>
     </div>
   </div>
@@ -11,12 +35,11 @@
 
 <script setup>
 import { computed } from 'vue';
-import { Loading } from '@element-plus/icons-vue';
 
 const props = defineProps({
   size: {
     type: Number,
-    default: 32
+    default: 48
   },
   color: {
     type: String,
@@ -32,7 +55,19 @@ const props = defineProps({
   }
 });
 
-const spinnerClass = computed(() => `loading-spinner-icon-${props.color}`);
+const colorMap = {
+  primary: '#409eff',
+  success: '#67c23a',
+  warning: '#e6a23c',
+  danger: '#f56c6c',
+  info: '#909399'
+};
+
+const progressColor = computed(() => colorMap[props.color] || colorMap.primary);
+const trackColor = computed(() => {
+  const hex = colorMap[props.color] || colorMap.primary;
+  return hex + '20';
+});
 </script>
 
 <style scoped>
@@ -60,10 +95,9 @@ const spinnerClass = computed(() => `loading-spinner-icon-${props.color}`);
   gap: 16px;
 }
 
-.spinner-icon {
-  display: inline-flex !important;
-  animation: spinner-rotate 1s linear infinite !important;
-  transform-origin: center center !important;
+.spinner-svg {
+  animation: spinner-rotate 1s linear infinite;
+  transform-origin: center;
 }
 
 @keyframes spinner-rotate {
@@ -73,26 +107,6 @@ const spinnerClass = computed(() => `loading-spinner-icon-${props.color}`);
   to {
     transform: rotate(360deg);
   }
-}
-
-.loading-spinner-icon-primary {
-  color: var(--el-color-primary);
-}
-
-.loading-spinner-icon-success {
-  color: var(--el-color-success);
-}
-
-.loading-spinner-icon-warning {
-  color: var(--el-color-warning);
-}
-
-.loading-spinner-icon-danger {
-  color: var(--el-color-danger);
-}
-
-.loading-spinner-icon-info {
-  color: var(--el-color-info);
 }
 
 .loading-spinner-text {

@@ -62,7 +62,11 @@
                 @blur="checkUsernameAvailability"
               />
               <div v-if="usernameCheckStatus === 'checking'" class="validation-message checking">
-                <el-icon><Loading /></el-icon> {{ i18n.t('checking') }}
+                <svg class="settings-checking-icon" width="16" height="16" viewBox="0 0 50 50">
+                  <circle cx="25" cy="25" r="20" stroke="#90939920" stroke-width="4" fill="none" />
+                  <circle cx="25" cy="25" r="20" stroke="#909399" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="80 200" />
+                </svg>
+                {{ i18n.t('checking') }}
               </div>
               <div v-else-if="usernameCheckStatus === 'available'" class="validation-message success">
                 <el-icon><CircleCheck /></el-icon> {{ i18n.t('usernameAvailable') }}
@@ -111,7 +115,11 @@
                 @blur="checkEmailAvailability"
               />
               <div v-if="emailCheckStatus === 'checking'" class="validation-message checking">
-                <el-icon><Loading /></el-icon> {{ i18n.t('checking') }}
+                <svg class="settings-checking-icon" width="16" height="16" viewBox="0 0 50 50">
+                  <circle cx="25" cy="25" r="20" stroke="#90939920" stroke-width="4" fill="none" />
+                  <circle cx="25" cy="25" r="20" stroke="#909399" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="80 200" />
+                </svg>
+                {{ i18n.t('checking') }}
               </div>
               <div v-else-if="emailCheckStatus === 'available'" class="validation-message success">
                 <el-icon><CircleCheck /></el-icon> {{ i18n.t('emailAvailable') }}
@@ -1023,6 +1031,21 @@ const handleEmailInput = (value) => {
 
 .validation-message.error {
   color: var(--el-color-danger);
+}
+
+.settings-checking-icon {
+  display: inline-block;
+  animation: settings-spin 1s linear infinite;
+  transform-origin: center center;
+}
+
+@keyframes settings-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .filter-warning {
