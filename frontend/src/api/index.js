@@ -142,6 +142,7 @@ export const filesAPI = {
   createFolder: (data) => apiClient.post('/files/folders', data),
   getStats: () => apiClient.get('/files/stats'),
   checkConflict: (data) => apiClient.post('/files/check-conflict', data),
+  getScanResult: (id) => apiClient.get(`/files/${id}/scan-result`),
 };
 
 export const sharesAPI = {

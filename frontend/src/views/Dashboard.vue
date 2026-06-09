@@ -188,6 +188,25 @@
                 {{ formatDate(row.updated_at || row.created_at) }}
               </template>
             </el-table-column>
+            <el-table-column label="安全状态" width="120">
+              <template #default="{ row }">
+                <div 
+                  v-if="row.type === 'file'" 
+                  class="security-status-wrapper"
+                  @click.stop="showScanResult(row)"
+                >
+                  <el-tooltip :content="getSecurityStatusText(row)" placement="top">
+                    <el-icon :size="18" class="security-status-icon" :class="row.securityStatus">
+                      <CircleCheck v-if="row.securityStatus === 'safe'" />
+                      <Warning v-else-if="row.securityStatus === 'warning'" />
+                      <CircleClose v-else-if="row.securityStatus === 'dangerous'" />
+                      <QuestionFilled v-else class="unknown" />
+                    </el-icon>
+                  </el-tooltip>
+                </div>
+                <span v-else class="security-status-muted">-</span>
+              </template>
+            </el-table-column>
             <el-table-column :label="i18n.t('actions')" width="350" fixed="right">
               <template #default="{ row }">
                 <el-button 
@@ -471,7 +490,58 @@
       </template>
     </el-dialog>
 
-    <!-- Share Result Dialog -->
+    <!-- Scan Result Detail Dialog -->
+    <el-dialog 
+      v-model="showScanResultDialog" 
+      :title="'扫描详情 - ' + (currentScanFile?.name || '')" 
+      width="520px"
+    >
+      <div v-if="loadingScanResult" class="scan-result-loading">
+        <el-icon class="is-loading"><Loading /></el-icon>
+        <span>加载中...</span>
+      </div>
+      <div v-else-if="scanResult" class="scan-result-content">
+        <div class="scan-status-row" :class="scanResult.securityStatus">
+          <el-icon :size="24">
+            <CircleCheck v-if="scanResult.securityStatus === 'safe'" />
+            <Warning v-else-if="scanResult.securityStatus === 'warning'" />
+            <CircleClose v-else-if="scanResult.securityStatus === 'dangerous'" />
+            <QuestionFilled v-else />
+          </el-icon>
+          <span class="status-label">
+            {{ getSecurityStatusText(scanResult) }}
+          </span>
+        </div>
+
+        <el-descriptions :column="1" border class="scan-descriptions">
+          <el-descriptions-item label="扫描模式">
+            {{ scanResult.scanMode || '未扫描' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="扫描时间">
+            {{ formatDate(scanResult.scanAt) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="扫描详情">
+            {{ scanResult.details || '无' }}
+          </el-descriptions-item>
+          <el-descriptions-item v-if="scanResult.warnings && scanResult.warnings.length > 0" label="警告">
+            <ul class="warning-list">
+              <li v-for="(warning, idx) in scanResult.warnings" :key="idx">
+                <el-icon><Warning /></el-icon>
+                <span>{{ warning }}</span>
+              </li>
+            </ul>
+          </el-descriptions-item>
+          <el-descriptions-item v-if="scanResult.error" label="扫描错误">
+            <span class="error-text">{{ scanResult.error }}</span>
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
+      <template #footer>
+        <el-button @click="showScanResultDialog = false">{{ i18n.t('close') }}</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Share Dialog -->
     <el-dialog 
       v-model="showShareResultDialog" 
       :title="i18n.t('shareLink') || 'Share Link'"
@@ -565,6 +635,64 @@ const shareForm = ref({
 });
 const shareResultUrl = ref('');
 const conflictDialog = ref(null);
+
+// 扫描详情相关
+const showScanResultDialog = ref(false);
+const currentScanFile = ref(null);
+const scanResult = ref(null);
+const loadingScanResult = ref(false);
+
+// 获取安全状态文本
+const getSecurityStatusText = (file) => {
+  if (!file || !file.securityStatus) return '未知';
+  switch (file.securityStatus) {
+    case 'safe': return '安全';
+    case 'warning': return '警告';
+    case 'dangerous': return '危险';
+    default: return '未知';
+  }
+};
+
+// 显示扫描详情
+const showScanResult = async (file) => {
+  currentScanFile.value = file;
+  showScanResultDialog.value = true;
+  scanResult.value = null;
+  
+  // 如果已经有 scanResult 信息（前端已加载），直接显示
+  if (file.scanMode || file.scanResult) {
+    let parsed = null;
+    try {
+      parsed = typeof file.scanResult === 'string' ? JSON.parse(file.scanResult) : file.scanResult;
+    } catch (e) {
+      parsed = null;
+    }
+    scanResult.value = {
+      fileName: file.name || file.originalName,
+      securityStatus: file.securityStatus,
+      scanMode: file.scanMode,
+      warnings: parsed?.warnings || [],
+      details: parsed?.details || null,
+      error: parsed?.error || null,
+      scanAt: file.scanAt
+    };
+    return;
+  }
+  
+  // 否则从后端请求
+  if (!file.id) return;
+  loadingScanResult.value = true;
+  try {
+    const response = await filesAPI.getScanResult(file.id);
+    if (response && response.success) {
+      scanResult.value = response.data;
+    }
+  } catch (error) {
+    console.error('获取扫描详情失败:', error);
+  } finally {
+    loadingScanResult.value = false;
+  }
+};
 
 const selectedFiles = computed(() => filesStore.selectedItems);
 const loading = computed(() => filesStore.isLoading);
@@ -1571,5 +1699,105 @@ const copyShareLink = () => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* 安全状态图标 */
+.security-status-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.security-status-wrapper:hover {
+  background-color: var(--el-fill-color-light);
+}
+
+.security-status-icon {
+  display: inline-flex;
+}
+
+.security-status-icon.safe {
+  color: var(--el-color-success);
+}
+
+.security-status-icon.warning {
+  color: var(--el-color-warning);
+}
+
+.security-status-icon.dangerous {
+  color: var(--el-color-danger);
+}
+
+.security-status-icon.unknown {
+  color: var(--el-text-color-placeholder);
+}
+
+.security-status-muted {
+  color: var(--el-text-color-placeholder);
+}
+
+/* 扫描结果弹窗 */
+.scan-result-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  gap: 8px;
+  color: var(--el-text-color-secondary);
+}
+
+.scan-status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.scan-status-row .status-label {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.scan-status-row.safe {
+  background: rgba(103, 194, 58, 0.12);
+  color: var(--el-color-success);
+}
+
+.scan-status-row.warning {
+  background: rgba(230, 162, 60, 0.12);
+  color: var(--el-color-warning);
+}
+
+.scan-status-row.dangerous {
+  background: rgba(245, 108, 108, 0.12);
+  color: var(--el-color-danger);
+}
+
+.scan-descriptions {
+  margin-top: 16px;
+}
+
+.warning-list {
+  margin: 0;
+  padding-left: 20px;
+  list-style: none;
+}
+
+.warning-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: var(--el-color-warning);
+}
+
+.error-text {
+  color: var(--el-color-danger);
 }
 </style>

@@ -147,7 +147,7 @@ export const useFilesStore = defineStore('files', () => {
   }
 
   // 初始化上传队列
-  function initUploadQueue(selectedFiles, folderId = null, conflictAction = 'keepBoth') {
+  function initUploadQueue(fileList, folderId = null, conflictAction = 'keepBoth') {
     uploadQueue.value = [];
     activeUploads.value = [];
     completedUploads.value = [];
@@ -238,7 +238,16 @@ export const useFilesStore = defineStore('files', () => {
       
       // 检查是否所有上传都完成
       if (uploadQueue.value.length === 0 && activeUploads.value.length === 0) {
-        toast.success(i18n.t('uploadSuccess'));
+        if (failedUploads.value.length > 0 && completedUploads.value.length === 0) {
+          // 全部失败
+          toast.error(i18n.t('uploadFailed') || '上传失败');
+        } else if (failedUploads.value.length > 0 && completedUploads.value.length > 0) {
+          // 部分成功部分失败
+          toast.warning(i18n.t('uploadPartialSuccess') || `${completedUploads.value.length} 个文件上传成功，${failedUploads.value.length} 个文件上传失败`);
+        } else {
+          // 全部成功
+          toast.success(i18n.t('uploadSuccess') || '上传成功');
+        }
         await loadFiles(currentFolderId.value);
       }
     }

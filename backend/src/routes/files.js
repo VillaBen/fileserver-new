@@ -384,7 +384,12 @@ router.post('/upload', upload.array('files', 10), validateFile, malwareScan, asy
       const scanResultDetails = scanResult ? JSON.stringify({
         warnings: scanResult.warnings,
         details: scanResult.details,
-        error: scanResult.error
+        error: scanResult.error,
+        dangerous: scanResult.dangerous,
+        warning: scanResult.warning,
+        clean: scanResult.clean,
+        infected: scanResult.infected,
+        securityStatus: scanResult.securityStatus
       }) : null;
       const scanAt = new Date();
 
@@ -774,6 +779,44 @@ router.post('/folders', async (req, res) => {
 });
 
 // ============ 动态路由 - 必须放在所有特定路由之后 ============
+
+// 获取文件扫描详情
+router.get('/:id/scan-result', async (req, res) => {
+  try {
+    const user = req.user;
+    const { id } = req.params;
+
+    const file = await db.asyncGet(
+      'SELECT id, original_name, security_status, scan_mode, scan_result, scan_at FROM files WHERE id = ? AND account_id = ?',
+      [id, user.id]
+    );
+
+    if (!file) {
+      return res.apiError('文件不存在', 'FILE_NOT_FOUND');
+    }
+
+    let parsedResult = null;
+    try {
+      parsedResult = file.scan_result ? JSON.parse(file.scan_result) : null;
+    } catch (e) {
+      parsedResult = { raw: file.scan_result };
+    }
+
+    res.apiSuccess({
+      id: file.id,
+      fileName: file.original_name,
+      securityStatus: file.security_status,
+      scanMode: file.scan_mode,
+      warnings: parsedResult?.warnings || [],
+      details: parsedResult?.details || null,
+      error: parsedResult?.error || null,
+      scanAt: file.scan_at
+    }, '获取扫描详情成功');
+  } catch (error) {
+    console.error('获取扫描详情错误:', error);
+    res.apiError('获取扫描详情失败', 'GET_SCAN_RESULT_ERROR');
+  }
+});
 
 // 获取单个文件
 router.get('/:id', async (req, res) => {
