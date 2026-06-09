@@ -255,7 +255,9 @@
         v-model:file-list="uploadFiles"
         multiple
         :show-file-list="false"
+        :accept="allowedFileTypes"
         @change="handleFileChange"
+        :before-upload="beforeUpload"
       >
         <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
         <div class="el-upload__text">{{ i18n.t('dropFilesHere') }}<em>{{ i18n.t('clickToUpload') }}</em></div>
@@ -1053,11 +1055,159 @@ const allowedExtensions = [
   'mp4', 'webm', 'mov', 'avi', 'mkv', 'flv'
 ];
 
-// 检查文件扩展名是否允许
-const isFileExtensionAllowed = (fileName) => {
-  if (!fileName || typeof fileName !== 'string') return false;
-  const ext = fileName.split('.').pop().toLowerCase();
+// 禁止的文件扩展名黑名单（与后端保持一致）
+const blockedExtensions = [
+  'svg', 'exe', 'bat', 'cmd', 'com', 'scr', 'pif', 'msi', 'msp', 'mst',
+  'dll', 'sys', 'ocx', 'cpl', 'drv', 'so',
+  'php', 'php3', 'php4', 'php5', 'php6', 'phps', 'phtml',
+  'asp', 'aspx', 'jsp', 'jspx', 'jhtml',
+  'cgi', 'pl', 'py', 'pyc', 'pyd',
+  'rb', 'rbw', 'rhtml', 'erb',
+  'sh', 'bash', 'zsh', 'csh', 'tcsh',
+  'ps1', 'psm1', 'psd1', 'vbs', 'vbe', 'jse', 'wsf', 'wsc',
+  'html', 'htm', 'shtml', 'xhtml', 'htaccess',
+  'js', 'mjs', 'jsx', 'tsx', 'vue',
+  'ts', 'cts', 'mts',
+  'css', 'scss', 'sass', 'less',
+  'py', 'pyw',
+  'java', 'jav', 'class', 'jar', 'war', 'ear',
+  'c', 'cpp', 'h', 'hpp', 'cc', 'cxx',
+  'cs', 'csx',
+  'go', 'rs', 'rscript',
+  'rb', 'rake', 'gem',
+  'swift', 'kt', 'kts', 'scala', 'groovy',
+  'dart', 'lua', 'perl', 'plx',
+  'r', 'R', 'rmd',
+  'php', 'phtml', 'module', 'theme',
+  'coffee', 'litcoffee',
+  'ini', 'cfg', 'conf', 'config', 'reg', 'inf',
+  'properties', 'prop', 'settings',
+  'env', 'environment',
+  'yaml', 'yml', 'toml', 'json5',
+  'xml', 'xaml', 'resx',
+  'sql', 'db', 'sqlite', 'sqlite3', 'mdb', 'accdb',
+  'dbf', 'cdb', 'fdb',
+  'pem', 'key', 'cer', 'crt', 'der', 'p12', 'pfx', 'p8', 'jks',
+  'p7b', 'p7r', 'p7s',
+  'gpg', 'pgp', 'asc',
+  'doc', 'docm', 'dot', 'dotm',
+  'xls', 'xlsm', 'xlt', 'xltm', 'xlam',
+  'ppt', 'pptm', 'pot', 'potm', 'ppam', 'ppsm',
+  'iso', 'img', 'bin', 'cue', 'mdf', 'mds',
+  'vmdk', 'vhd', 'vhdx', 'hdd', 'qcow', 'qcow2',
+  'dmg', 'cdr', 'sparseimage',
+  'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'lz',
+  'cab', 'arj', 'lzh', 'ace', 'tgz', 'tbz2',
+  'lnk', 'url', 'desktop', 'shortcut',
+  'webloc', 'website', 'pcast',
+  'eml', 'msg', 'vcf', 'vcard', 'ics',
+  'mbox', 'mail',
+  'psd', 'psb', 'ai', 'eps', 'indd',
+  'skp', 'skm', 'blend',
+  'fbx', 'obj', '3ds', 'dae', 'stl',
+  'chm', 'hlp', 'hlpx',
+  'hta', 'adget', 'shb',
+  'swf', 'fla', 'as', 'vcproj', 'sln',
+  'aaf', 'mxf', 'prproj',
+  'apk', 'ipa', 'xap', 'appx', 'appxbundle',
+  'aab', 'nex',
+  'torrent', 'magnet', 'metalink',
+  'par', 'par2',
+  'bat', 'btm', 'command', 'workflow',
+  'exe1', 'exe2', 'pif', 'application',
+  'gadget', 'msc', 'diagcab',
+  'jar', 'jnlp', 'webstart'
+];
+
+// 生成文件选择器的 accept 属性
+const allowedFileTypes = computed(() => {
+  const typeMap = {
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'bmp': 'image/bmp',
+    'ico': 'image/x-icon',
+    'tiff': 'image/tiff',
+    'tif': 'image/tiff',
+    'pdf': 'application/pdf',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'txt': 'text/plain',
+    'md': 'text/markdown',
+    'json': 'application/json',
+    'xml': 'application/xml',
+    'csv': 'text/csv',
+    'log': 'text/plain',
+    'mp3': 'audio/mpeg',
+    'wav': 'audio/wav',
+    'ogg': 'audio/ogg',
+    'flac': 'audio/flac',
+    'aac': 'audio/aac',
+    'm4a': 'audio/mp4',
+    'wma': 'audio/x-ms-wma',
+    'mp4': 'video/mp4',
+    'webm': 'video/webm',
+    'mov': 'video/quicktime',
+    'avi': 'video/x-msvideo',
+    'mkv': 'video/x-matroska',
+    'flv': 'video/x-flv'
+  };
+  return allowedExtensions.map(ext => typeMap[ext] || `.${ext}`).join(',');
+});
+
+// 获取文件扩展名（与后端一致，取最后一个点之后的部分）
+const getFileExtension = (fileName) => {
+  if (!fileName || typeof fileName !== 'string') {
+    return '';
+  }
+  const lastDotIndex = fileName.lastIndexOf('.');
+  if (lastDotIndex === -1) {
+    return '';
+  }
+  return fileName.substring(lastDotIndex + 1).toLowerCase();
+};
+
+// 检查文件扩展名是否在黑名单中
+const isExtensionBlocked = (fileName) => {
+  const ext = getFileExtension(fileName);
+  return blockedExtensions.includes(ext);
+};
+
+// 检查文件扩展名是否在白名单中
+const isExtensionAllowed = (fileName) => {
+  const ext = getFileExtension(fileName);
   return allowedExtensions.includes(ext);
+};
+
+// 检查文件是否允许上传
+const isFileAllowed = (fileName) => {
+  if (!fileName) return false;
+  // 先检查黑名单（优先级更高）
+  if (isExtensionBlocked(fileName)) {
+    return false;
+  }
+  // 再检查白名单
+  return isExtensionAllowed(fileName);
+};
+
+// 上传前的检查
+const beforeUpload = (file) => {
+  const fileName = file.name;
+  
+  if (!isFileAllowed(fileName)) {
+    const ext = getFileExtension(fileName);
+    if (isExtensionBlocked(fileName)) {
+      toast.warning(`${i18n.t('fileTypeBlocked') || 'File type blocked'}: .${ext}`);
+    } else {
+      toast.warning(`${i18n.t('unsupportedFileType') || 'Unsupported file type'}: .${ext}`);
+    }
+    return false;
+  }
+  
+  return true;
 };
 
 // 处理文件选择变化
@@ -1072,10 +1222,14 @@ const handleFileChange = async (file, fileList) => {
     if (isNewFile) {
       const fileName = f.raw?.name || f.name;
       
-      // 检查文件类型是否允许
-      if (!isFileExtensionAllowed(fileName)) {
-        const ext = fileName?.split('.').pop()?.toLowerCase() || 'unknown';
-        toast.warning(`${i18n.t('unsupportedFileType') || 'Unsupported file type'}: .${ext}`);
+      // 检查文件类型是否允许（先黑名单，再白名单）
+      if (!isFileAllowed(fileName)) {
+        const ext = getFileExtension(fileName);
+        if (isExtensionBlocked(fileName)) {
+          toast.warning(`${i18n.t('fileTypeBlocked') || 'File type blocked'}: .${ext}`);
+        } else {
+          toast.warning(`${i18n.t('unsupportedFileType') || 'Unsupported file type'}: .${ext}`);
+        }
         return;
       }
       
