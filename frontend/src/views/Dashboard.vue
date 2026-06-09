@@ -1231,6 +1231,19 @@ const beforeUpload = (file) => {
   return true;
 };
 
+// 处理UTF-8编码的文件名（修复控制台显示乱码问题）
+const decodeUtf8FileName = (fileName) => {
+  if (!fileName || typeof fileName !== 'string') return fileName;
+  try {
+    const escaped = fileName.replace(/%([0-9A-Fa-f]{2})/g, (_, hex) => 
+      String.fromCharCode(parseInt(hex, 16))
+    );
+    return decodeURIComponent(escaped);
+  } catch (e) {
+    return fileName;
+  }
+};
+
 // 处理文件选择变化
 const handleFileChange = async (file, fileList) => {
   console.log('=== handleFileChange 开始 ===');
@@ -1308,6 +1321,15 @@ const handleFileChange = async (file, fileList) => {
       console.log('开始扫描文件:', newFilesToScan.length, '个文件');
       
       const response = await filesAPI.previewScan(formData);
+      
+      // 解码扫描结果中的文件名（修复乱码）
+      if (response.data && Array.isArray(response.data)) {
+        response.data.forEach(result => {
+          if (result.fileName) {
+            result.fileName = decodeUtf8FileName(result.fileName);
+          }
+        });
+      }
       
       console.log('扫描响应:', response);
       

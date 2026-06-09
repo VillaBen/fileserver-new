@@ -555,7 +555,7 @@ const translations = {
     modified: 'Modified',
     name: 'Name',
     items: 'items',
-    uploadTip: 'Supported formats: JPG, PNG, GIF, PDF, DOC, DOCX, XLS, XLSX',
+    uploadTip: 'Supported formats: JPG, JPEG, PNG, GIF, WebP, BMP, ICO, TIFF, PDF, DOC, DOCX, XLS, XLSX, PPTX, TXT, MD, JSON, XML, CSV, LOG, MP3, WAV, OGG, FLAC, AAC, M4A, WMA, MP4, WebM, MOV, AVI, MKV, FLV',
     dropFilesHere: 'Drop files here',
     clickToUpload: 'click to upload',
     scanning: 'Scanning...',
