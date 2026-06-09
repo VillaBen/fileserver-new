@@ -198,10 +198,14 @@ export const useFilesStore = defineStore('files', () => {
   async function uploadSingleFile(uploadItem, folderId, conflictAction) {
     const formData = new FormData();
     formData.append('files', uploadItem.file);
-    if (folderId !== null) {
-      formData.append('folderId', folderId);
+    const targetFolderId = folderId !== undefined && folderId !== null
+      ? folderId
+      : (uploadItem.folderId !== undefined ? uploadItem.folderId : null);
+    if (targetFolderId !== null) {
+      formData.append('folderId', targetFolderId);
     }
-    formData.append('conflictAction', conflictAction);
+    const targetConflictAction = conflictAction || uploadItem.conflictAction || 'keepBoth';
+    formData.append('conflictAction', targetConflictAction);
     
     // 创建 AbortController 用于取消上传
     const controller = new AbortController();

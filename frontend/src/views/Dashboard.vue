@@ -939,7 +939,7 @@ const handleUpload = async () => {
     
     // 初始化上传队列并开始上传
     filesStore.initUploadQueue(nativeFiles, filesStore.currentFolderId, conflictAction);
-    filesStore.startUploads();
+    filesStore.startUploads(filesStore.currentFolderId, conflictAction);
   };
 
 // 处理文件选择变化

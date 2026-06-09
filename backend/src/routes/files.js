@@ -313,6 +313,11 @@ router.post('/upload', upload.array('files', 10), validateFile, malwareScan, asy
     const uploadedFiles = [];
     const conflicts = [];
 
+    // 如果没有文件被 multer 解析，返回明确错误
+    if (!req.files || req.files.length === 0) {
+      return res.apiError('没有文件被上传，请检查文件类型和格式', 'NO_FILES_UPLOADED');
+    }
+
     for (let i = 0; i < req.files.length; i++) {
       const file = req.files[i];
       // 确保原始文件名正确处理 UTF-8 编码

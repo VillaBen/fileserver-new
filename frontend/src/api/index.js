@@ -6,9 +6,6 @@ const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 export const apiClient = axios.create({
   baseURL: BASE_URL,
   timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 apiClient.interceptors.request.use(
@@ -17,6 +14,10 @@ apiClient.interceptors.request.use(
     const token = authStore.user?.token || localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // FormData 请求由浏览器自动设置正确的 Content-Type 和 boundary
+    if (!(config.data instanceof FormData) && !config.headers['Content-Type']) {
+      config.headers['Content-Type'] = 'application/json';
     }
     return config;
   },
@@ -97,28 +98,19 @@ export const userAPI = {
   getProfile: () => apiClient.get('/user/profile'),
   updateProfile: (data) => apiClient.put('/user/profile', data),
   getStorage: () => apiClient.get('/user/storage'),
-  uploadAvatar: (formData) => apiClient.post('/user/avatar', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  uploadAvatar: (formData) => apiClient.post('/user/avatar', formData),
   deleteAvatar: () => apiClient.delete('/user/avatar'),
 };
 
 export const filesAPI = {
   getFiles: (params) => apiClient.get('/files', { params }),
   getFile: (id) => apiClient.get(`/files/${id}`),
-  previewScan: (formData) => apiClient.post('/files/preview-scan', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  previewScan: (formData) => apiClient.post('/files/preview-scan', formData),
   upload: (formData, options = {}) => {
-    const config = {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      ...options,
-    };
-    return apiClient.post('/files/upload', formData, config);
+    return apiClient.post('/files/upload', formData, options);
   },
   uploadWithProgress: (formData, onProgress, options = {}) => {
     const config = {
-      headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: (progressEvent) => {
         if (onProgress && progressEvent.total > 0) {
           const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
