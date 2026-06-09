@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import Landing from '../views/Landing.vue';
 import Login from '../views/Login.vue';
 import Register from '../views/Register.vue';
 import ForgotPassword from '../views/ForgotPassword.vue';
@@ -19,8 +18,7 @@ import { useAuthStore } from '../stores/auth';
 const routes = [
   {
     path: '/',
-    name: 'Landing',
-    component: Landing,
+    redirect: '/dashboard',
   },
   {
     path: '/login',
