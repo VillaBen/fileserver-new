@@ -29,7 +29,7 @@
               <img :src="qrCodeUrl" alt="QR Code" class="qr-image" />
             </div>
             <div v-else class="qr-loading">
-              <svg class="loading-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg class="two-factor-loading-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 12a9 9 0 11-6.219-8.56" />
               </svg>
             </div>
@@ -458,14 +458,14 @@ defineExpose({
   border: 2px dashed var(--gray-200);
 }
 
-.loading-spinner {
+.two-factor-loading-spinner {
   width: 40px;
   height: 40px;
   color: var(--primary-500);
-  animation: spin 1s linear infinite;
+  animation: two-factor-spin 1s linear infinite;
 }
 
-@keyframes spin {
+@keyframes two-factor-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
