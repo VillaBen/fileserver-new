@@ -193,15 +193,16 @@ router.post('/login', authRateLimit, async (req, res) => {
       const remainingAttempts = Math.max(0, 5 - currentAttempts);
       
       // 增加失败尝试次数
+      // SQLite 不支持 DATE_ADD / INTERVAL，在 JS 层计算锁定时间
+      const lockedUntil = currentAttempts >= 5
+        ? new Date(Date.now() + 15 * 60 * 1000).toISOString().replace('T', ' ').replace(/\.\d+Z$/, '')
+        : null;
       await db.asyncRun(
         `UPDATE accounts 
          SET failed_login_attempts = failed_login_attempts + 1,
-             locked_until = CASE 
-               WHEN failed_login_attempts >= 4 THEN DATE_ADD(NOW(), INTERVAL 15 MINUTE)
-               ELSE NULL 
-             END
+             locked_until = ?
          WHERE id = ?`,
-        [user.id]
+        [lockedUntil, user.id]
       );
       
       if (remainingAttempts > 0) {
@@ -478,7 +479,7 @@ router.post('/reset-password', strictAuthRateLimit, async (req, res) => {
 
     // 查找所有未过期的重置请求，然后解密比较
     const resets = await db.asyncAll(
-      'SELECT * FROM password_resets WHERE used = 0 AND expires_at > NOW()',
+      'SELECT * FROM password_resets WHERE used = 0 AND expires_at > CURRENT_TIMESTAMP',
       []
     );
 
@@ -600,7 +601,7 @@ router.post('/2fa/verify', requireAuth, async (req, res) => {
     if (matchedRecoveryCode) {
       // 使用恢复码
       await db.asyncRun(
-        'UPDATE recovery_codes SET used = 1, used_at = NOW() WHERE id = ?',
+        'UPDATE recovery_codes SET used = 1, used_at = CURRENT_TIMESTAMP WHERE id = ?',
         [matchedRecoveryCode.id]
       );
 
@@ -754,7 +755,7 @@ router.post('/verify-email-code', async (req, res) => {
 
     // 查找验证码
     const emailCodes = await db.asyncAll(
-      'SELECT * FROM email_codes WHERE email = ? AND purpose = ? AND expires_at > NOW()',
+      'SELECT * FROM email_codes WHERE email = ? AND purpose = ? AND expires_at > CURRENT_TIMESTAMP',
       [encryptedEmail, purpose]
     );
 
