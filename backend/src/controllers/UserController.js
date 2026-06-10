@@ -236,9 +236,16 @@ const ensureProfileExists = async (accountId) => {
  * 更新用户资料
  */
 const updateProfile = async (req, res) => {
+  const accountId = req.user?.id || null;
+  
   try {
-    const accountId = req.user.id;
     const { language, trashAutoDeleteEnabled, trashAutoDeleteDays, displayName, username, email } = req.body;
+    
+    console.log('[UPDATE_PROFILE] 收到请求:', { accountId, body: req.body });
+
+    if (!accountId) {
+      return res.apiError('用户未登录', 'UNAUTHORIZED');
+    }
 
     // 确保 user_profiles 记录存在
     await ensureProfileExists(accountId);
@@ -346,9 +353,10 @@ const updateProfile = async (req, res) => {
       [accountId, 'update_profile', req.ip, JSON.stringify(auditDetails)]
     );
 
+    console.log('[UPDATE_PROFILE] 更新成功:', { accountId, profileUpdates, accountUpdates });
     res.apiSuccess(null, '资料更新成功');
   } catch (error) {
-    console.error('更新用户资料错误:', error);
+    console.error('[UPDATE_PROFILE] 更新失败:', { accountId: accountId || 'unknown', error: error.message, stack: error.stack });
     res.apiError('更新资料失败', 'UPDATE_PROFILE_ERROR');
   }
 };
