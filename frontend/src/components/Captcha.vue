@@ -308,18 +308,23 @@ defineExpose({
 
 @media (max-width: 768px) {
   .captcha-container {
-    flex-direction: column;
-    gap: 12px;
+    flex-direction: row;
+    gap: 10px;
   }
   
   .captcha-wrapper {
-    width: 100%;
-    height: 70px;
+    width: 120px;
+    height: 48px;
   }
   
   .captcha-loading {
-    gap: 10px;
-    font-size: 13px;
+    gap: 8px;
+    font-size: 12px;
+  }
+  
+  .captcha-input {
+    padding: 12px 0;
+    font-size: 14px;
   }
 }
 </style>

@@ -176,6 +176,7 @@ import { useI18nStore } from '../../stores/i18n';
 import { useAdminStore } from '../../stores/admin';
 import { toast } from '../../utils/toast';
 import { formatDate } from '../../utils/format';
+import { filterSearch } from '../../utils/inputFilter';
 import LoadingSpinner from '../../components/LoadingSpinner.vue';
 import EmptyState from '../../components/EmptyState.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
@@ -297,16 +298,8 @@ const confirmDelete = async () => {
   }
 };
 
-// 字符过滤函数
-const sanitizeSearch = (value) => {
-  if (!value) return '';
-  // 搜索框只过滤控制字符
-  return value.replace(/[\x00-\x1F\x7F]/g, '');
-};
-
 const handleSearchInput = (value) => {
-  searchQuery.value = sanitizeSearch(value);
-  // 输入时自动触发搜索
+  searchQuery.value = filterSearch(value);
   pagination.value.page = 1;
   loadUsers();
 };

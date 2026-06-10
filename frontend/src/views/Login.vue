@@ -608,6 +608,7 @@ const clearPassword = () => {
   border-radius: 8px;
   border: 1px solid #fed7aa;
   font-size: 14px;
+  margin-top: 8px;
 }
 
 .filter-warning .warning-icon {

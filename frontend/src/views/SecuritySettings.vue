@@ -30,6 +30,7 @@
                     :placeholder="i18n.t('smtpHostPlaceholder') || '例如: smtp.example.com'"
                     size="large"
                     :disabled="loading"
+                    @input="handleHostInput"
                   />
                 </el-form-item>
               </el-col>
@@ -40,6 +41,7 @@
                     :placeholder="i18n.t('smtpPortPlaceholder') || '例如: 587 或 465'"
                     size="large"
                     :disabled="loading"
+                    @input="handlePortInput"
                   />
                 </el-form-item>
               </el-col>
@@ -53,6 +55,7 @@
                     :placeholder="i18n.t('smtpUserPlaceholder') || '例如: noreply@example.com'"
                     size="large"
                     :disabled="loading"
+                    @input="handleUserInput"
                   />
                 </el-form-item>
               </el-col>
@@ -78,6 +81,7 @@
                     :placeholder="i18n.t('smtpFromPlaceholder') || '例如: FileCloud'"
                     size="large"
                     :disabled="loading"
+                    @input="handleFromInput"
                   />
                 </el-form-item>
               </el-col>
@@ -141,6 +145,7 @@
                 :placeholder="i18n.t('enterApiKey') || '请输入 VirusTotal API Key'"
                 size="large"
                 :disabled="loading"
+                @input="handleApiKeyInput"
               />
               <div class="form-tip">
                 <el-icon><InfoFilled /></el-icon>
@@ -274,6 +279,7 @@
             v-model="testEmailForm.to"
             :placeholder="i18n.t('recipientEmailPlaceholder') || '请输入收件人邮箱'"
             size="large"
+            @input="handleTestEmailInput"
           />
         </el-form-item>
       </el-form>
@@ -299,6 +305,7 @@ import { ElMessage } from 'element-plus';
 import { Key, Lock, InfoFilled, CircleCheck, Warning, CircleClose, QuestionFilled, Message } from '@element-plus/icons-vue';
 import { useI18nStore } from '@/stores/i18n';
 import settingsApi from '@/api/client';
+import { filterEmail, filterSearch } from '@/utils/inputFilter';
 import HighRiskConfirmDialog from '@/components/HighRiskConfirmDialog.vue';
 
 const i18n = useI18nStore();
@@ -323,6 +330,30 @@ const smtpForm = ref({
 const testEmailForm = ref({
   to: ''
 });
+
+const handleHostInput = (value) => {
+  smtpForm.value.host = filterSearch(value);
+};
+
+const handlePortInput = (value) => {
+  smtpForm.value.port = value.replace(/[^0-9]/g, '').slice(0, 5);
+};
+
+const handleUserInput = (value) => {
+  smtpForm.value.user = filterEmail(value);
+};
+
+const handleFromInput = (value) => {
+  smtpForm.value.from = filterSearch(value);
+};
+
+const handleApiKeyInput = (value) => {
+  apiKeyForm.value.apiKey = value.replace(/[\x00-\x1F\x7F]/g, '');
+};
+
+const handleTestEmailInput = (value) => {
+  testEmailForm.value.to = filterEmail(value);
+};
 
 const loading = ref(false);
 const saving = ref(false);
