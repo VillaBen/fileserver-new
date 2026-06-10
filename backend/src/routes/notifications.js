@@ -17,14 +17,14 @@ router.get('/', requireAuth, async (req, res) => {
     const onlyUnread = req.query.unread === 'true';
 
     let sql = `
-      SELECT id, type, title, message, action_url, read, read_at, created_at
+      SELECT id, type, title, message, action_url, \`read\`, read_at, created_at
       FROM notifications
       WHERE account_id = ?
     `;
     const params = [userId];
 
     if (onlyUnread) {
-      sql += ' AND read = 0';
+      sql += ' AND \`read\` = 0';
     }
 
     sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
@@ -34,7 +34,7 @@ router.get('/', requireAuth, async (req, res) => {
 
     // 获取未读总数
     const unreadResult = await db.asyncGet(
-      'SELECT COUNT(*) as count FROM notifications WHERE account_id = ? AND read = 0',
+      'SELECT COUNT(*) as count FROM notifications WHERE account_id = ? AND \`read\` = 0',
       [userId]
     );
 
@@ -72,7 +72,7 @@ router.put('/:id/read', requireAuth, async (req, res) => {
     }
 
     await db.asyncRun(
-      'UPDATE notifications SET read = 1, read_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE notifications SET \`read\` = 1, read_at = CURRENT_TIMESTAMP WHERE id = ?',
       [notificationId]
     );
 
@@ -99,7 +99,7 @@ router.put('/:id/unread', requireAuth, async (req, res) => {
     }
 
     await db.asyncRun(
-      'UPDATE notifications SET read = 0, read_at = NULL WHERE id = ?',
+      'UPDATE notifications SET \`read\` = 0, read_at = NULL WHERE id = ?',
       [notificationId]
     );
 
@@ -115,7 +115,7 @@ router.put('/read-all', requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
     await db.asyncRun(
-      'UPDATE notifications SET read = 1, read_at = CURRENT_TIMESTAMP WHERE account_id = ? AND read = 0',
+      'UPDATE notifications SET \`read\` = 1, read_at = CURRENT_TIMESTAMP WHERE account_id = ? AND \`read\` = 0',
       [userId]
     );
     res.apiSuccess(null, '全部标记为已读');

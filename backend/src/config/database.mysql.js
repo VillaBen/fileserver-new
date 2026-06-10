@@ -268,6 +268,73 @@ async function initDatabase() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
+  // 信任设备表
+  await db.asyncRun(`
+    CREATE TABLE IF NOT EXISTS trusted_devices (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      account_id BIGINT NOT NULL,
+      device_name VARCHAR(255),
+      device_type VARCHAR(50),
+      user_agent TEXT,
+      ip_address VARCHAR(45),
+      location VARCHAR(255),
+      token VARCHAR(255),
+      last_login_at DATETIME,
+      expires_at DATETIME,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+      INDEX idx_account_id (account_id),
+      INDEX idx_token (token)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  // 通知表
+  await db.asyncRun(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      account_id BIGINT NOT NULL,
+      type VARCHAR(50) NOT NULL DEFAULT 'info',
+      title VARCHAR(255) NOT NULL,
+      message TEXT,
+      action_url TEXT,
+      \`read\` TINYINT NOT NULL DEFAULT 0,
+      read_at DATETIME,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+      INDEX idx_account_id (account_id),
+      INDEX idx_read (\`read\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  // 播放列表表
+  await db.asyncRun(`
+    CREATE TABLE IF NOT EXISTS playlists (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      account_id BIGINT NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      description TEXT,
+      item_count INT NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+      INDEX idx_account_id (account_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  // 播放列表项表
+  await db.asyncRun(`
+    CREATE TABLE IF NOT EXISTS playlist_items (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      playlist_id BIGINT NOT NULL,
+      file_id BIGINT,
+      file_name VARCHAR(255) NOT NULL,
+      sort_order INT NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
+      INDEX idx_playlist_id (playlist_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
   console.log('✅ MySQL 数据库初始化完成');
 
   // 创建初始管理员账号
