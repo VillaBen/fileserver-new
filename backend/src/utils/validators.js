@@ -49,7 +49,7 @@ function validateUsername(username) {
   }
   
   // 检查是否包含敏感词
-  const sensitiveWords = ['admin', 'root', 'system', 'filecloud', 'moderator', 'support'];
+  const sensitiveWords = ['admin', 'root', 'system', 'moderator', 'support'];
   const lowerUsername = trimmed.toLowerCase();
   for (const word of sensitiveWords) {
     if (lowerUsername === word || lowerUsername.includes(word)) {
