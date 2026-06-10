@@ -6,14 +6,22 @@
         <p class="page-subtitle">{{ i18n.t('manageSystemUsers') || 'Manage system users and permissions' }}</p>
       </div>
       <div class="header-right">
-        <el-input
-          v-model="searchQuery"
-          :placeholder="i18n.t('searchUsers') || 'Search users'"
-          prefix-icon="Search"
-          clearable
-          class="search-input"
-          @input="handleSearchInput"
-        />
+        <div class="search-input-wrapper">
+          <el-input
+            v-model="searchQuery"
+            :placeholder="i18n.t('searchUsers') || 'Search users'"
+            prefix-icon="Search"
+            clearable
+            class="search-input"
+            @input="handleSearchInput"
+          />
+          <transition name="fade">
+            <div v-if="searchFilterWarning" class="filter-warning">
+              <el-icon><Warning /></el-icon>
+              <span>{{ i18n.t('invalidCharactersRemoved') || '无效字符已移除' }}</span>
+            </div>
+          </transition>
+        </div>
         <el-button type="primary" @click="loadUsers">
           <el-icon><Refresh /></el-icon>
           {{ i18n.t('refresh') }}
@@ -171,12 +179,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { Refresh, Edit, Delete, Search } from '@element-plus/icons-vue';
+import { Refresh, Edit, Delete, Search, Warning } from '@element-plus/icons-vue';
 import { useI18nStore } from '../../stores/i18n';
 import { useAdminStore } from '../../stores/admin';
 import { toast } from '../../utils/toast';
 import { formatDate } from '../../utils/format';
-import { filterSearch } from '../../utils/inputFilter';
+import { filterUsername } from '../../utils/inputFilter';
 import LoadingSpinner from '../../components/LoadingSpinner.vue';
 import EmptyState from '../../components/EmptyState.vue';
 import ConfirmDialog from '../../components/ConfirmDialog.vue';
@@ -202,6 +210,22 @@ const editForm = ref({
   status: 'active',
   quota: 10
 });
+
+// 搜索框过滤警告
+const searchFilterWarning = ref(false);
+
+const showSearchFilterWarning = () => {
+  searchFilterWarning.value = true;
+  setTimeout(() => {
+    searchFilterWarning.value = false;
+  }, 3000);
+};
+
+const handleSearchInput = (value) => {
+  searchQuery.value = filterUsername(value, showSearchFilterWarning);
+  pagination.value.page = 1;
+  loadUsers();
+};
 
 onMounted(async () => {
   await loadUsers();
@@ -297,12 +321,6 @@ const confirmDelete = async () => {
     deleting.value = false;
   }
 };
-
-const handleSearchInput = (value) => {
-  searchQuery.value = filterSearch(value);
-  pagination.value.page = 1;
-  loadUsers();
-};
 </script>
 
 <style scoped>
@@ -344,6 +362,42 @@ const handleSearchInput = (value) => {
 
 .search-input {
   width: 250px;
+}
+
+.search-input-wrapper {
+  position: relative;
+}
+
+.filter-warning {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fffbeb;
+  color: #d97706;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #fed7aa;
+  font-size: 14px;
+  margin-top: 8px;
+  z-index: 10;
+  box-shadow: var(--el-box-shadow-light);
+}
+
+.filter-warning .el-icon {
+  flex-shrink: 0;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 .users-table-container {

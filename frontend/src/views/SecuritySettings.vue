@@ -32,6 +32,12 @@
                     :disabled="loading"
                     @input="handleHostInput"
                   />
+                  <transition name="fade">
+                    <div v-if="hostFilterWarning" class="filter-warning">
+                      <el-icon><Warning /></el-icon>
+                      <span>{{ i18n.t('invalidCharactersRemoved') || '无效字符已移除' }}</span>
+                    </div>
+                  </transition>
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -43,6 +49,12 @@
                     :disabled="loading"
                     @input="handlePortInput"
                   />
+                  <transition name="fade">
+                    <div v-if="portFilterWarning" class="filter-warning">
+                      <el-icon><Warning /></el-icon>
+                      <span>{{ i18n.t('invalidCharactersRemoved') || '无效字符已移除' }}</span>
+                    </div>
+                  </transition>
                 </el-form-item>
               </el-col>
             </el-row>
@@ -57,6 +69,12 @@
                     :disabled="loading"
                     @input="handleUserInput"
                   />
+                  <transition name="fade">
+                    <div v-if="userFilterWarning" class="filter-warning">
+                      <el-icon><Warning /></el-icon>
+                      <span>{{ i18n.t('invalidCharactersRemoved') || '无效字符已移除' }}</span>
+                    </div>
+                  </transition>
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -83,6 +101,12 @@
                     :disabled="loading"
                     @input="handleFromInput"
                   />
+                  <transition name="fade">
+                    <div v-if="fromFilterWarning" class="filter-warning">
+                      <el-icon><Warning /></el-icon>
+                      <span>{{ i18n.t('invalidCharactersRemoved') || '无效字符已移除' }}</span>
+                    </div>
+                  </transition>
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -147,6 +171,12 @@
                 :disabled="loading"
                 @input="handleApiKeyInput"
               />
+              <transition name="fade">
+                <div v-if="apiKeyFilterWarning" class="filter-warning">
+                  <el-icon><Warning /></el-icon>
+                  <span>{{ i18n.t('invalidCharactersRemoved') || '无效字符已移除' }}</span>
+                </div>
+              </transition>
               <div class="form-tip">
                 <el-icon><InfoFilled /></el-icon>
                 <span>{{ i18n.t('apiKeyTip') || 'API Key 将使用 AES-256 加密存储' }}</span>
@@ -281,6 +311,12 @@
             size="large"
             @input="handleTestEmailInput"
           />
+          <transition name="fade">
+            <div v-if="testEmailFilterWarning" class="filter-warning">
+              <el-icon><Warning /></el-icon>
+              <span>{{ i18n.t('invalidCharactersRemoved') || '无效字符已移除' }}</span>
+            </div>
+          </transition>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -331,28 +367,75 @@ const testEmailForm = ref({
   to: ''
 });
 
+// 过滤警告状态
+const hostFilterWarning = ref(false);
+const portFilterWarning = ref(false);
+const userFilterWarning = ref(false);
+const fromFilterWarning = ref(false);
+const apiKeyFilterWarning = ref(false);
+const testEmailFilterWarning = ref(false);
+
+// 显示过滤警告提示
+const showHostFilterWarning = () => {
+  hostFilterWarning.value = true;
+  setTimeout(() => { hostFilterWarning.value = false; }, 3000);
+};
+
+const showPortFilterWarning = () => {
+  portFilterWarning.value = true;
+  setTimeout(() => { portFilterWarning.value = false; }, 3000);
+};
+
+const showUserFilterWarning = () => {
+  userFilterWarning.value = true;
+  setTimeout(() => { userFilterWarning.value = false; }, 3000);
+};
+
+const showFromFilterWarning = () => {
+  fromFilterWarning.value = true;
+  setTimeout(() => { fromFilterWarning.value = false; }, 3000);
+};
+
+const showApiKeyFilterWarning = () => {
+  apiKeyFilterWarning.value = true;
+  setTimeout(() => { apiKeyFilterWarning.value = false; }, 3000);
+};
+
+const showTestEmailFilterWarning = () => {
+  testEmailFilterWarning.value = true;
+  setTimeout(() => { testEmailFilterWarning.value = false; }, 3000);
+};
+
 const handleHostInput = (value) => {
-  smtpForm.value.host = filterSearch(value);
+  smtpForm.value.host = filterSearch(value, showHostFilterWarning);
 };
 
 const handlePortInput = (value) => {
-  smtpForm.value.port = value.replace(/[^0-9]/g, '').slice(0, 5);
+  const sanitized = value.replace(/[^0-9]/g, '').slice(0, 5);
+  if (sanitized !== value) {
+    showPortFilterWarning();
+  }
+  smtpForm.value.port = sanitized;
 };
 
 const handleUserInput = (value) => {
-  smtpForm.value.user = filterEmail(value);
+  smtpForm.value.user = filterEmail(value, showUserFilterWarning);
 };
 
 const handleFromInput = (value) => {
-  smtpForm.value.from = filterSearch(value);
+  smtpForm.value.from = filterSearch(value, showFromFilterWarning);
 };
 
 const handleApiKeyInput = (value) => {
-  apiKeyForm.value.apiKey = value.replace(/[\x00-\x1F\x7F]/g, '');
+  const sanitized = value.replace(/[\x00-\x1F\x7F]/g, '');
+  if (sanitized !== value) {
+    showApiKeyFilterWarning();
+  }
+  apiKeyForm.value.apiKey = sanitized;
 };
 
 const handleTestEmailInput = (value) => {
-  testEmailForm.value.to = filterEmail(value);
+  testEmailForm.value.to = filterEmail(value, showTestEmailFilterWarning);
 };
 
 const loading = ref(false);
@@ -667,6 +750,33 @@ async function sendTestEmail() {
   margin-top: 8px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.filter-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fffbeb;
+  color: #d97706;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #fed7aa;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.filter-warning .el-icon {
+  flex-shrink: 0;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 .form-actions {

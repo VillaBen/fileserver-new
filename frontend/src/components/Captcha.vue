@@ -43,12 +43,6 @@
         </svg>
         <span>{{ i18n.t('loading') }}</span>
       </div>
-      <div class="refresh-hint">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="23 4 23 10 17 10" />
-          <path d="M20.49 15a9 9 0 11-2.121-9.358L23 10" />
-        </svg>
-      </div>
     </div>
   </div>
 </template>
@@ -228,12 +222,6 @@ defineExpose({
   transition: all var(--transition-base);
 }
 
-.captcha-wrapper:hover {
-  border-color: var(--primary-400);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
 .captcha-image {
   width: 100%;
   height: 100%;
@@ -265,27 +253,6 @@ defineExpose({
   to {
     transform: rotate(360deg);
   }
-}
-
-.refresh-hint {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity var(--transition-base);
-}
-
-.captcha-wrapper:hover .refresh-hint {
-  opacity: 1;
-}
-
-.refresh-hint svg {
-  width: 24px;
-  height: 24px;
-  color: white;
 }
 
 .captcha-filter-warning {
