@@ -4,6 +4,67 @@
 
 ---
 
+## 2026-06-10
+
+### P0 - 登录后页面持续加载不跳转
+
+**问题**：登录成功后页面一直显示加载状态，没有跳转到 dashboard。
+
+**根本原因**：
+1. `RegionDetector.vue` 第252行存在 CSS 语法错误（`<.message-text {`）
+2. `authStore` 中多个函数返回值不一致（有的返回 `response`，有的返回 `response.data`）
+3. Axios 响应拦截器已解包返回 `response.data`，但部分业务代码又访问 `.data`
+4. Token 未单独保存到 localStorage，导致后续请求无法获取认证 token
+5. 请求拦截器未注入 CSRF token
+
+**修复文件**：
+- [RegionDetector.vue](file:///workspace/frontend/src/components/RegionDetector.vue)
+- [auth.js](file:///workspace/frontend/src/stores/auth.js)
+- [files.js](file:///workspace/frontend/src/stores/files.js)
+- [api/index.js](file:///workspace/frontend/src/api/index.js)
+- [UploadProgress.vue](file:///workspace/frontend/src/components/UploadProgress.vue)
+- [NotificationCenter.vue](file:///workspace/frontend/src/components/NotificationCenter.vue)
+
+**修复内容**：
+1. **CSS 语法错误修复**：`RegionDetector.vue` 第252行 `<.message-text {` 改为 `.message-text {`
+2. **返回值一致性修复**：`loginWithTwoFactor`、`register`、`verifyTwoFactor`、`disableTwoFactor`、`changePassword` 函数统一返回 `response.data`
+3. **文件冲突检测修复**：`uploadSingleFile` 中 `response.conflicts` 改为 `response.data.conflicts`
+4. **createFolder 返回值修复**：统一返回 `response.data`
+5. **Token 存储修复**：`loadFromStorage` 和 `saveToStorage` 函数单独保存/加载 token 到 localStorage
+6. **CSRF Token 注入**：`api/index.js` 请求拦截器添加 `X-CSRF-Token` header 注入
+7. **Computed 修改问题**：`UploadProgress.vue` 重试上传改为调用 `filesStore.retryUpload()`，避免直接修改 computed 返回值
+8. **Store 直接修改问题**：`NotificationCenter.vue` 标记已读/删除改为通过 emit 通知父组件处理
+9. **新增 retryUpload 函数**：在 filesStore 中添加单个文件重试功能
+
+---
+
+### P1 - 区域选择对话框逻辑优化
+
+**问题**：区域选择对话框逻辑不够清晰，用户无法控制是否继续显示。
+
+**修复文件**：
+- [RegionDetector.vue](file:///workspace/frontend/src/components/RegionDetector.vue)
+
+**修复内容**：
+1. 仅在用户勾选"不再弹出"后，才保存 `regionDialogNeverShow` 状态到 localStorage
+2. 检测方案调整：优先使用 IP 地址检测，浏览器语言作为备用方案
+3. 模板语法修复：提取 `checkboxLabel` computed 属性，避免在 Vue 模板 attribute 中使用转义字符
+
+---
+
+### P1 - Element Plus 语言包未配置
+
+**问题**：Element Plus 组件内部文案（日期选择器、表单提示、分页等）不会跟随 i18n 切换。
+
+**修复文件**：
+- [main.js](file:///workspace/frontend/src/main.js)
+
+**修复内容**：
+1. 导入 Element Plus 中英文语言包：`import zhCn from 'element-plus/dist/locale/zh-cn.mjs'` 和 `import en from 'element-plus/dist/locale/en.mjs'`
+2. `app.use(ElementPlus)` 时根据 `i18nStore.currentLocale` 动态设置 locale
+
+---
+
 ## 2026-06-09
 
 ### P0 - 文件上传 Content-Type 导致文件无法上传
