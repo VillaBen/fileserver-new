@@ -27,8 +27,7 @@ router.get('/', requireAuth, async (req, res) => {
       sql += ' AND \`read\` = 0';
     }
 
-    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
+    sql += ` ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
 
     const notifications = await db.asyncAll(sql, params);
 

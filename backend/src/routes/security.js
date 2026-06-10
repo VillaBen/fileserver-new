@@ -255,8 +255,8 @@ router.get('/login-logs', requireAuth, async (req, res) => {
        FROM audit_logs
        WHERE account_id = ? AND (action LIKE '%LOGIN%' OR action LIKE '%AUTH%' OR action LIKE 'UPLOAD_FILES' OR action LIKE 'DOWNLOAD_FILE' OR action LIKE 'CHANGE_PASSWORD' OR action LIKE 'DELETE_FILE' OR action LIKE 'PERMANENT_DELETE_FILE')
        ORDER BY created_at DESC
-       LIMIT ? OFFSET ?`,
-      [userId, limit, offset]
+       LIMIT ${limit} OFFSET ${offset}`,
+      [userId]
     );
 
     const total = await db.asyncGet(
