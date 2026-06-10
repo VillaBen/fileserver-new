@@ -39,19 +39,44 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     if (error.response?.status === 401) {
-      // 检查当前是否已经在登录页面，避免循环跳转
       if (window.location.pathname !== '/login') {
         const authStore = useAuthStore();
         authStore.logout();
         window.location.href = '/login';
       }
     }
-    // 处理业务级别的登录过期错误（状态非401，但错误码为 TOKEN_EXPIRED / UNAUTHORIZED）
+
+    // 处理 blob 类型的错误响应（预览/下载等请求）
+    if (error.response?.config?.responseType === 'blob' && error.response.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text();
+        const resData = JSON.parse(text);
+        if (resData.error) {
+          const enhancedError = {
+            ...error,
+            error: resData.error.message || '请求失败',
+            errorCode: resData.error.code || 'ERROR',
+            success: false,
+            data: null,
+          };
+          return Promise.reject(enhancedError);
+        }
+      } catch (e) {
+        // 如果不是 JSON，说明是真正的文件响应但状态码不对
+        return Promise.reject({
+          ...error,
+          error: '文件处理失败',
+          errorCode: 'FILE_ERROR',
+          success: false,
+          data: null,
+        });
+      }
+    }
+
     if (error.response?.data) {
       const resData = error.response.data;
       const errCode = resData.error?.code || resData.errorCode || resData.code;
       if (errCode === 'TOKEN_EXPIRED' || errCode === 'UNAUTHORIZED') {
-        // 检查当前是否已经在登录页面，避免循环跳转
         if (window.location.pathname !== '/login') {
           const authStore = useAuthStore();
           authStore.logout();
@@ -59,18 +84,16 @@ apiClient.interceptors.response.use(
         }
       }
     }
-    // 改造错误对象，让它包含后端返回的详细信息
+
     if (error.response?.data) {
       const resData = error.response.data;
       let errorMessage = '请求失败';
       let errorCode = 'ERROR';
 
       if (resData.error && typeof resData.error === 'object') {
-        // 后端新格式: { success: false, error: { code, message } }
         errorMessage = resData.error.message || errorMessage;
         errorCode = resData.error.code || errorCode;
       } else if (resData.error) {
-        // 兼容可能的旧格式
         errorMessage = resData.error;
         errorCode = resData.errorCode || resData.code || errorCode;
       } else if (resData.message) {

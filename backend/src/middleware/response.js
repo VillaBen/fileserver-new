@@ -12,7 +12,34 @@ function apiResponseHandler(req, res, next) {
   };
 
   res.apiError = function(message = '操作失败', code = 'ERROR') {
-    return res.status(400).json(ApiResponse.error(message, code));
+    // 根据错误码返回对应的 HTTP 状态码
+    let statusCode = 400;
+    switch (code) {
+      case 'UNAUTHORIZED':
+      case 'TOKEN_EXPIRED':
+        statusCode = 401;
+        break;
+      case 'FORBIDDEN':
+        statusCode = 403;
+        break;
+      case 'FILE_NOT_FOUND':
+      case 'NOT_FOUND':
+        statusCode = 404;
+        break;
+      case 'CONFLICT':
+        statusCode = 409;
+        break;
+      case 'TOO_LARGE':
+        statusCode = 413;
+        break;
+      case 'UNSUPPORTED_FORMAT':
+        statusCode = 415;
+        break;
+      case 'INTERNAL_ERROR':
+        statusCode = 500;
+        break;
+    }
+    return res.status(statusCode).json(ApiResponse.error(message, code));
   };
 
   res.apiPaginated = function(data, pagination) {
