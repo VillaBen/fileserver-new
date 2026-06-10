@@ -8,7 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { db } = require('../config/database.adapter');
-const { encryptFile, decryptFileToStream, getFileHash } = require('../utils/encryption');
+const { encryptFile, decryptFileToStream, decryptFileToCache, getCachedFilePath, getFileHash } = require('../utils/encryption');
 const { validateFile, maxFileSize } = require('../middleware/fileValidator');
 const { malwareScan, scanPreview } = require('../middleware/malwareScanner');
 const { validateFilename, validateFoldername } = require('../utils/validators');
@@ -1247,6 +1247,120 @@ router.put('/:id/rename', async (req, res) => {
   } catch (error) {
     console.error('重命名文件错误:', error);
     res.apiError('重命名失败', 'RENAME_ERROR');
+  }
+});
+
+// 流式播放（带缓存 + HTTP Range 支持）
+// 首次请求：解密到缓存目录；后续请求（含 Range）直接从缓存文件流式传输
+// 支持通过 header 或 query 参数 token 进行认证（便于 <audio>、<video> 标签直接使用 URL）
+router.get('/:id/stream', async (req, res) => {
+  try {
+    const user = req.user;
+    const { id } = req.params;
+
+    const file = await db.asyncGet(
+      'SELECT * FROM files WHERE id = ? AND account_id = ?',
+      [id, user.id]
+    );
+
+    if (!file) {
+      return res.apiError('文件不存在', 'FILE_NOT_FOUND');
+    }
+
+    if (!fs.existsSync(file.filepath)) {
+      return res.apiError('文件已丢失', 'FILE_MISSING');
+    }
+
+    const CACHE_DIR = path.join(__dirname, '../../cache/decrypted');
+    const cacheKey = String(file.id);
+    let cachedPath = getCachedFilePath(CACHE_DIR, cacheKey, file.size);
+
+    // 若加密文件且缓存未命中，先解密到缓存
+    if (file.is_encrypted && !cachedPath) {
+      try {
+        cachedPath = await decryptFileToCache(file.filepath, CACHE_DIR, cacheKey);
+      } catch (decryptErr) {
+        console.error('解密到缓存失败:', decryptErr);
+        return res.apiError('解密失败', 'DECRYPT_ERROR');
+      }
+    } else if (!file.is_encrypted) {
+      cachedPath = file.filepath;
+    }
+
+    if (!cachedPath || !fs.existsSync(cachedPath)) {
+      return res.apiError('资源不可用', 'FILE_UNAVAILABLE');
+    }
+
+    const stat = fs.statSync(cachedPath);
+    const total = stat.size;
+    const mimeType = file.mime_type || 'application/octet-stream';
+
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.original_name)}"`);
+
+    const rangeHeader = req.headers.range;
+
+    // 处理 Range 请求
+    if (rangeHeader) {
+      const rangeMatch = rangeHeader.match(/^bytes=(\d*)-(\d*)$/);
+      if (!rangeMatch) {
+        res.statusCode = 416;
+        res.setHeader('Content-Range', `bytes */${total}`);
+        return res.end();
+      }
+
+      let start = rangeMatch[1] === '' ? null : parseInt(rangeMatch[1], 10);
+      let end = rangeMatch[2] === '' ? null : parseInt(rangeMatch[2], 10);
+
+      // 未指定 end 则读到文件末尾
+      if (start === null && end !== null) {
+        // suffix range: bytes=-N => last N bytes
+        start = Math.max(0, total - end);
+        end = total - 1;
+      } else if (start !== null && end === null) {
+        end = total - 1;
+      } else if (start === null && end === null) {
+        res.statusCode = 416;
+        res.setHeader('Content-Range', `bytes */${total}`);
+        return res.end();
+      }
+
+      if (isNaN(start) || isNaN(end) || start > end || start >= total) {
+        res.statusCode = 416;
+        res.setHeader('Content-Range', `bytes */${total}`);
+        return res.end();
+      }
+
+      end = Math.min(end, total - 1);
+
+      res.statusCode = 206;
+      res.setHeader('Content-Range', `bytes ${start}-${end}/${total}`);
+      res.setHeader('Content-Length', end - start + 1);
+
+      const stream = fs.createReadStream(cachedPath, { start, end });
+      stream.on('error', (err) => {
+        console.error('Range 流传输错误:', err);
+        if (!res.headersSent) res.status(500).end();
+      });
+      stream.pipe(res);
+      return;
+    }
+
+    // 无 Range：整文件传输
+    res.statusCode = 200;
+    res.setHeader('Content-Length', total);
+    const stream = fs.createReadStream(cachedPath);
+    stream.on('error', (err) => {
+      console.error('流传输错误:', err);
+      if (!res.headersSent) res.status(500).end();
+    });
+    stream.pipe(res);
+  } catch (error) {
+    console.error('stream 接口错误:', error);
+    if (!res.headersSent) {
+      res.apiError('播放失败', 'STREAM_ERROR');
+    }
   }
 });
 

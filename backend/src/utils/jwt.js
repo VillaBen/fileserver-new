@@ -61,7 +61,16 @@ function extractToken(req) {
     return authHeader.slice(7);
   }
 
-  return req.cookies.token || null;
+  if (req.cookies && req.cookies.token) {
+    return req.cookies.token;
+  }
+
+  // 支持通过 query 参数传递 token（用于 <audio> / <video> / <img> 等标签）
+  if (req.query && req.query.token) {
+    return req.query.token;
+  }
+
+  return null;
 }
 
 /**

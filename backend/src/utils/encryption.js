@@ -234,6 +234,67 @@ function getFileHash(filePath) {
   });
 }
 
+/**
+ * 解密文件到缓存目录（异步），返回缓存文件路径
+ * 用于支持 HTTP Range 播放：首次请求时解密到缓存，后续 Range 请求直接从缓存读取
+ * @param {string} inputPath - 加密文件路径
+ * @param {string} cachePath - 缓存目录
+ * @param {string} cacheKey - 缓存 key（通常是文件 id）
+ * @returns {Promise<string>} - 解密后的缓存文件路径
+ */
+function decryptFileToCache(inputPath, cachePath, cacheKey) {
+  return new Promise((resolve, reject) => {
+    if (!fs.existsSync(cachePath)) {
+      fs.mkdirSync(cachePath, { recursive: true });
+    }
+
+    // 读取 IV
+    const fd = fs.openSync(inputPath, 'r');
+    const iv = Buffer.alloc(IV_LENGTH);
+    const bytesRead = fs.readSync(fd, iv, 0, IV_LENGTH, 0);
+    fs.closeSync(fd);
+    if (bytesRead < IV_LENGTH) {
+      return reject(new Error('文件损坏：IV 长度不足'));
+    }
+
+    const key = Buffer.from(ENCRYPTION_KEY.slice(0, 32), 'utf-8');
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    const outputPath = path.join(cachePath, cacheKey);
+    const tmpPath = outputPath + '.tmp';
+
+    const readStream = fs.createReadStream(inputPath, { start: IV_LENGTH });
+    const writeStream = fs.createWriteStream(tmpPath);
+
+    readStream.on('error', reject);
+    writeStream.on('error', reject);
+    writeStream.on('finish', () => {
+      fs.rename(tmpPath, outputPath, (err) => {
+        if (err) reject(err);
+        else resolve(outputPath);
+      });
+    });
+
+    readStream.pipe(decipher).pipe(writeStream);
+  });
+}
+
+/**
+ * 获取缓存文件路径（如已存在且完整则返回路径，否则返回 null）
+ * @param {string} cachePath - 缓存目录
+ * @param {string} cacheKey - 缓存 key
+ * @param {number} expectedSize - 期望的文件大小（不校验传 -1）
+ * @returns {string|null}
+ */
+function getCachedFilePath(cachePath, cacheKey, expectedSize = -1) {
+  const filePath = path.join(cachePath, cacheKey);
+  if (!fs.existsSync(filePath)) return null;
+  if (expectedSize > 0) {
+    const stat = fs.statSync(filePath);
+    if (stat.size !== expectedSize) return null;
+  }
+  return filePath;
+}
+
 module.exports = {
   encrypt,
   decrypt,
@@ -245,5 +306,7 @@ module.exports = {
   encryptFile,
   decryptFile,
   decryptFileToStream,
+  decryptFileToCache,
+  getCachedFilePath,
   getFileHash
 };

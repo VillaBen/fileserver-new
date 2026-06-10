@@ -788,15 +788,11 @@ async function addToExistingPlaylist(playlistId) {
 
 function playInIsland(file) {
   if (!file) return;
-  filesStore.previewFile(file.id).then(blob => {
-    if (blob) {
-      const url = URL.createObjectURL(blob);
-      playerStore.setQueue([{ id: file.id, fileId: file.id, name: file.name, url }], 0);
-      playerStore.isVisible = true;
-      playerStore.isExpanded = true;
-      setTimeout(() => playerStore.play(), 800);
-    }
-  }).catch(e => { console.error(e); alert('预览失败'); });
+  const url = getStreamUrl(file.id);
+  playerStore.setQueue([{ id: file.id, fileId: file.id, name: file.name, url }], 0);
+  playerStore.isVisible = true;
+  playerStore.isExpanded = true;
+  setTimeout(() => playerStore.play(), 500);
 }
 
 function playFileInIsland(file) { playInIsland(file); }
@@ -1665,6 +1661,14 @@ const handleDownload = async (file) => {
   }
 };
 
+// 构造流式播放 URL（带 token query 参数，便于 <audio>/<video> 直接使用）
+function getStreamUrl(fileId) {
+  const token = localStorage.getItem('token') || '';
+  const base = import.meta.env.VITE_API_URL || '/api';
+  const sep = base.endsWith('/') ? '' : '/';
+  return `${base}${sep}files/${fileId}/stream?token=${encodeURIComponent(token)}`;
+}
+
 const handlePreview = async (file) => {
     if (file.type === 'folder') return;
     
@@ -1675,6 +1679,13 @@ const handlePreview = async (file) => {
     textContent.value = '';
 
     try {
+      // 音频/视频文件：直接使用流式 URL（支持 HTTP Range，边下边播）
+      if (isAudioFile(file) || isVideoFile(file)) {
+        previewUrl.value = getStreamUrl(file.id);
+        previewLoading.value = false;
+        return;
+      }
+
       const blob = await filesStore.previewFile(file.id);
       if (blob) {
         // 如果是文本文件，读取文本内容
