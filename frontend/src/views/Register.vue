@@ -420,7 +420,54 @@ async function handleRegister() {
     ElMessage.warning(i18n.t('requiredField'));
     return;
   }
-  
+
+  if (formData.password.length < 8) {
+    ElMessage.warning(i18n.t('passwordTooShort') || 'Password must be at least 8 characters');
+    return;
+  }
+
+  const WEAK_PATTERNS = [
+    /^[0-9]+$/,
+    /^[a-z]+$/,
+    /^[A-Z]+$/,
+    /(.)\1{3,}/,
+    /0123|1234|2345|3456|4567|5678|6789|7890|8901|9012|0987|9876|8765|7654|6543|5432|4321|3210|2109/,
+    /abcd|bcde|cdef|defg|efgh|fghi|ghij|hijk|ijkl|jklm|klmn|lmno|mnop|nopq|opqr|pqrs|qrst|rstu|stuv|tuvw|uvwx|vwxy|wxyz/i,
+    /password|passwort|passphrase|secret|admin|letmein|welcome|monkey|master|qwerty|abc123|1111|0000|1234|1212|6666|9999|iloveyou|loveyou|login|trustno1|dragon|admin123|root|toor/i,
+  ];
+
+  let passwordScore = 0;
+  const pw = formData.password;
+  const lower = /[a-z]/.test(pw);
+  const upper = /[A-Z]/.test(pw);
+  const digits = /\d/.test(pw);
+  const special = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;`'~]/.test(pw);
+  const uniqueChars = new Set(pw.toLowerCase()).size;
+  const uniqueRatio = uniqueChars / pw.length;
+
+  let hasWeakPattern = false;
+  for (const pattern of WEAK_PATTERNS) {
+    if (pattern.test(pw)) {
+      hasWeakPattern = true;
+      break;
+    }
+  }
+
+  if (pw.length >= 8) passwordScore++;
+  if (pw.length >= 12) passwordScore++;
+  if (pw.length >= 16) passwordScore++;
+  if (lower && upper) passwordScore++;
+  if (digits) passwordScore++;
+  if (special) passwordScore++;
+  if (uniqueRatio > 0.7) passwordScore++;
+  if (hasWeakPattern) passwordScore = Math.max(0, passwordScore - 2);
+  if (pw.length <= 6) passwordScore = Math.min(passwordScore, 1);
+
+  if (passwordScore < 2) {
+    ElMessage.warning(i18n.t('passwordTooWeak') || 'Password is too weak. Please use a stronger password');
+    return;
+  }
+
   if (formData.password !== formData.confirmPassword) {
     ElMessage.warning(i18n.t('passwordsDontMatch'));
     return;

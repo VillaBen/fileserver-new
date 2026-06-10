@@ -71,10 +71,7 @@
               <div v-else-if="usernameCheckStatus === 'taken'" class="validation-message error">
                 <el-icon><CircleClose /></el-icon> {{ i18n.t('usernameTaken') }}
               </div>
-            </el-form-item>
-            
-            <el-form-item v-if="showFilterWarning">
-              <div class="filter-warning">
+              <div v-if="usernameFilterWarning" class="validation-message filter-inline">
                 <el-icon class="warning-icon"><Warning /></el-icon>
                 <span>{{ i18n.t('invalidCharactersRemoved') }}</span>
               </div>
@@ -92,6 +89,10 @@
                 clearable
                 @input="handleDisplayNameInput"
               />
+              <div v-if="displayNameFilterWarning" class="validation-message filter-inline">
+                <el-icon class="warning-icon"><Warning /></el-icon>
+                <span>{{ i18n.t('invalidCharactersRemoved') }}</span>
+              </div>
             </el-form-item>
             
             <el-form-item 
@@ -123,6 +124,10 @@
               </div>
               <div v-else-if="emailCheckStatus === 'invalid'" class="validation-message error">
                 <el-icon><CircleClose /></el-icon> {{ i18n.t('invalidEmail') }}
+              </div>
+              <div v-if="emailFilterWarning" class="validation-message filter-inline">
+                <el-icon class="warning-icon"><Warning /></el-icon>
+                <span>{{ i18n.t('invalidCharactersRemoved') }}</span>
               </div>
             </el-form-item>
             
@@ -175,6 +180,16 @@
                 :placeholder="i18n.t('enterPassword')"
                 size="large"
               />
+              <div v-if="passwordForm.newPassword || passwordForm.confirmPassword" class="password-match-indicator">
+                <span v-if="passwordForm.newPassword && passwordForm.newPassword === passwordForm.confirmPassword" class="match-valid">
+                  <el-icon><CircleCheck /></el-icon>
+                  {{ i18n.t('passwordsMatch') }}
+                </span>
+                <span v-else-if="passwordForm.newPassword && passwordForm.confirmPassword" class="match-invalid">
+                  <el-icon><CircleClose /></el-icon>
+                  {{ i18n.t('passwordsDontMatch') }}
+                </span>
+              </div>
             </el-form-item>
             
             <el-button type="primary" @click="changePassword" :loading="changingPassword">
@@ -465,7 +480,9 @@ let emailCheckTimer = null;
 // Validation status
 const usernameCheckStatus = ref('idle'); // idle, checking, available, taken
 const emailCheckStatus = ref('idle'); // idle, checking, available, taken, invalid
-const showFilterWarning = ref(false);
+const usernameFilterWarning = ref(false);
+const displayNameFilterWarning = ref(false);
+const emailFilterWarning = ref(false);
 
 // Password form
 const passwordForm = ref({
@@ -935,14 +952,57 @@ const saveProfile = async () => {
 };
 
 const validatePasswordStrength = (password) => {
+  const WEAK_PATTERNS = [
+    /^[0-9]+$/,
+    /^[a-z]+$/,
+    /^[A-Z]+$/,
+    /(.)\1{3,}/,
+    /0123|1234|2345|3456|4567|5678|6789|7890|8901|9012|0987|9876|8765|7654|6543|5432|4321|3210|2109/,
+    /abcd|bcde|cdef|defg|efgh|fghi|ghij|hijk|ijkl|jklm|klmn|lmno|mnop|nopq|opqr|pqrs|qrst|rstu|stuv|tuvw|uvwx|vwxy|wxyz/i,
+    /password|passwort|passphrase|secret|admin|letmein|welcome|monkey|master|qwerty|abc123|1111|0000|1234|1212|6666|9999|iloveyou|loveyou|login|trustno1|dragon|admin123|root|toor/i,
+  ];
+
   let score = 0;
   if (!password) return 0;
+
+  const lower = /[a-z]/.test(password);
+  const upper = /[A-Z]/.test(password);
+  const digits = /\d/.test(password);
+  const special = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;`'~]/.test(password);
+  const unicode = /[^\x00-\x7F]/.test(password);
+
+  const uniqueChars = new Set(password.toLowerCase()).size;
+  const uniqueRatio = uniqueChars / password.length;
+
+  let hasWeakPattern = false;
+  for (const pattern of WEAK_PATTERNS) {
+    if (pattern.test(password)) {
+      hasWeakPattern = true;
+      break;
+    }
+  }
+  const hasUsername = /admin|username|user|login|test|demo/i.test(password);
+  const hasDatePattern = /(19|20)\d{2}[01]\d[0-3]\d|[01]\d[0-3]\d(19|20)\d{2}|\d{4}[-_.]\d{2}[-_.]\d{2}|\d{2}[-_.]\d{2}[-_.]\d{4}/.test(password);
+
   if (password.length >= 8) score++;
   if (password.length >= 12) score++;
-  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
-  if (/\d/.test(password)) score++;
-  if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
-  return Math.min(4, Math.max(0, score));
+  if (password.length >= 16) score++;
+  if (password.length >= 20) score++;
+
+  if (lower && upper) score++;
+  if (digits) score++;
+  if (special) score++;
+  if (unicode) score++;
+
+  if (uniqueRatio > 0.7) score++;
+
+  if (hasWeakPattern || hasUsername || hasDatePattern) {
+    score = Math.max(0, score - 2);
+  }
+
+  if (password.length <= 6) score = Math.min(score, 1);
+
+  return Math.min(5, Math.max(0, score));
 };
 
 // Password functions
@@ -994,30 +1054,44 @@ const setTheme = (newTheme) => {
   toast.success(i18n.t('themeUpdated'));
 };
 
-// 显示过滤警告提示
-const showFilterWarningToast = () => {
-  showFilterWarning.value = true;
+// 显示过滤警告提示（每个输入框独立的）
+const showUsernameFilterWarning = () => {
+  usernameFilterWarning.value = true;
   setTimeout(() => {
-    showFilterWarning.value = false;
+    usernameFilterWarning.value = false;
+  }, 3000);
+};
+
+const showDisplayNameFilterWarning = () => {
+  displayNameFilterWarning.value = true;
+  setTimeout(() => {
+    displayNameFilterWarning.value = false;
+  }, 3000);
+};
+
+const showEmailFilterWarning = () => {
+  emailFilterWarning.value = true;
+  setTimeout(() => {
+    emailFilterWarning.value = false;
   }, 3000);
 };
 
 // 输入处理函数（使用统一过滤工具）
 const handleUsernameInput = (value) => {
-  const sanitized = filterUsername(value, showFilterWarningToast);
+  const sanitized = filterUsername(value, showUsernameFilterWarning);
   profileForm.value.username = sanitized;
   // 实时检查用户名可用性
   debouncedCheckUsername();
 };
 
 const handleDisplayNameInput = (value) => {
-  const sanitized = filterDisplayName(value, showFilterWarningToast);
+  const sanitized = filterDisplayName(value, showDisplayNameFilterWarning);
   profileForm.value.displayName = sanitized;
 };
 
 // 邮箱输入处理（实时检查）
 const handleEmailInput = (value) => {
-  const sanitized = filterEmail(value, showFilterWarningToast);
+  const sanitized = filterEmail(value, showEmailFilterWarning);
   profileForm.value.email = sanitized;
   // 实时检查邮箱可用性
   debouncedCheckEmail();
@@ -1046,6 +1120,36 @@ const handleEmailInput = (value) => {
 }
 
 .validation-message.error {
+  color: var(--el-color-danger);
+}
+
+.validation-message.filter-inline {
+  color: var(--el-color-warning);
+}
+
+.filter-inline .warning-icon {
+  flex-shrink: 0;
+}
+
+.password-match-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.password-match-indicator .match-valid {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--el-color-success);
+}
+
+.password-match-indicator .match-invalid {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: var(--el-color-danger);
 }
 
