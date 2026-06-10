@@ -249,7 +249,7 @@ onMounted(() => {
   color: var(--el-text-color-primary);
 }
 
-<.message-text {
+.message-text {
   margin: 0;
   font-size: 14px;
   color: var(--el-text-color-secondary);

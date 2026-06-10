@@ -18,6 +18,10 @@ export const useAuthStore = defineStore('auth', () => {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         user.value = JSON.parse(stored);
+        // 确保 token 也被加载
+        if (user.value.token) {
+          localStorage.setItem('token', user.value.token);
+        }
       }
     } catch (error) {
       console.error('Failed to load user from storage:', error);
@@ -29,8 +33,13 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       if (user.value) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(user.value));
+        // 单独保存 token，供 axios 请求拦截器使用
+        if (user.value.token) {
+          localStorage.setItem('token', user.value.token);
+        }
       } else {
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem('token');
       }
     } catch (error) {
       console.error('Failed to save user to storage:', error);
@@ -77,7 +86,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
         user.value = response.data;
         saveToStorage();
-        return response;
+        return response.data;
       }
       throw response;
     } catch (error) {
