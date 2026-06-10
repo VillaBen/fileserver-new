@@ -254,6 +254,10 @@ export const usePlayerStore = defineStore('player', () => {
     isExpanded.value = false;
   }
 
+  function expandPlayer() {
+    isExpanded.value = true;
+  }
+
   function showPlayer() {
     isVisible.value = true;
   }
@@ -361,6 +365,7 @@ export const usePlayerStore = defineStore('player', () => {
     toggleMute,
     togglePlayMode,
     toggleExpand,
+    expandPlayer,
     collapsePlayer,
     showPlayer,
     hidePlayer,

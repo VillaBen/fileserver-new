@@ -806,8 +806,7 @@ function playInIsland(file) {
   if (!file) return;
   const url = getStreamUrl(file.id);
   playerStore.setQueue([{ id: file.id, fileId: file.id, name: file.name, url }], 0);
-  playerStore.isVisible = true;
-  playerStore.isExpanded = true;
+  playerStore.expandPlayer();
   setTimeout(() => playerStore.play(), 500);
 }
 
