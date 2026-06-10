@@ -22,10 +22,14 @@ const { initClamAV, getConfig } = require('./src/middleware/malwareScanner');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 中间件 - CORS白名单（前端固定5173端口）
+// 中间件 - CORS白名单（前端开发端口）
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
+  'http://localhost:5175',
+  'http://127.0.0.1:5175',
 ];
 app.use(cors({
   origin: (origin, callback) => {
