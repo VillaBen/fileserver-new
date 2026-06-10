@@ -180,30 +180,22 @@ const handleNotificationClick = (notification) => {
 };
 
 const markAsRead = (notification) => {
-  notification.read = true;
+  // 通过 emit 通知父组件处理，而不是直接修改 store 的数据
   toast.success(i18n.t('markedAsRead') || 'Marked as read');
   emit('mark-read', notification);
 };
 
 const markAllAsRead = () => {
-  notifications.value.forEach(n => {
-    n.read = true;
-  });
   toast.success(i18n.t('allMarkedAsRead') || 'All notifications marked as read');
   emit('mark-read', null);
 };
 
 const deleteNotification = (notification) => {
-  const index = notifications.value.findIndex(n => n.id === notification.id);
-  if (index > -1) {
-    notifications.value.splice(index, 1);
-    toast.success(i18n.t('notificationDeleted') || 'Notification deleted');
-    emit('delete', notification);
-  }
+  toast.success(i18n.t('notificationDeleted') || 'Notification deleted');
+  emit('delete', notification);
 };
 
 const clearAll = () => {
-  notifications.value = [];
   toast.success(i18n.t('allNotificationsCleared') || 'All notifications cleared');
   emit('delete', null);
 };

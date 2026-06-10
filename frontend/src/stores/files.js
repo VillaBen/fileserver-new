@@ -354,6 +354,19 @@ export const useFilesStore = defineStore('files', () => {
     await startUploads();
   }
 
+  // 重试单个上传
+  async function retryUpload(uploadId) {
+    const index = failedUploads.value.findIndex(u => u.id === uploadId);
+    if (index > -1) {
+      const upload = { ...failedUploads.value[index] };
+      upload.status = 'pending';
+      upload.progress = 0;
+      failedUploads.value.splice(index, 1);
+      uploadQueue.value.push(upload);
+      await startUploads();
+    }
+  }
+
   // 旧的上传方法（保持兼容性）
   async function uploadFiles(selectedFiles, folderId = null, conflictAction = 'keepBoth') {
     const formData = new FormData();
@@ -608,6 +621,7 @@ export const useFilesStore = defineStore('files', () => {
     resumeUpload,
     cancelUpload,
     clearUploads,
+    retryUpload,
     retryFailedUploads,
     // 基础功能
     loadFiles,

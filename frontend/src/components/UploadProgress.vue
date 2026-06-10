@@ -205,14 +205,8 @@ async function confirmCancel(uploadId) {
 }
 
 function retryUpload(uploadId) {
-  const upload = failedUploads.value.find(u => u.id === uploadId);
-  if (upload) {
-    upload.status = 'pending';
-    upload.progress = 0;
-    uploadQueue.value.push(upload);
-    failedUploads.value = failedUploads.value.filter(u => u.id !== uploadId);
-    filesStore.startUploads();
-  }
+  // 通过 filesStore 重试上传，而不是直接修改 computed 返回的对象
+  filesStore.retryUpload(uploadId);
 }
 
 function retryAllFailed() {
