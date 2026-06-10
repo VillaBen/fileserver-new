@@ -1,37 +1,39 @@
 <template>
   <div class="captcha-container">
-    <div class="input-wrapper">
-      <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-        <path d="M7 11l4-7 2 3 4-4 3 8" />
-      </svg>
-      <input
-        v-model="captchaCode"
-        type="text"
-        :placeholder="i18n.t('verificationCode')"
-        class="captcha-input"
-        @input="handleInput"
-      />
-      <button 
-        v-if="captchaCode" 
-        type="button" 
-        class="clear-btn" 
-        @click="clearCaptcha"
-        :title="i18n.t('clear') || 'Clear'"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
+    <div class="captcha-left">
+      <div class="input-wrapper">
+        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11l4-7 2 3 4-4 3 8" />
         </svg>
-      </button>
-    </div>
-    <div v-if="filterWarning" class="captcha-filter-warning">
-      <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="8" x2="12" y2="12"/>
-        <line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      <span>{{ i18n.t('invalidCharactersRemoved') }}</span>
+        <input
+          v-model="captchaCode"
+          type="text"
+          :placeholder="i18n.t('verificationCode')"
+          class="captcha-input"
+          @input="handleInput"
+        />
+        <button 
+          v-if="captchaCode" 
+          type="button" 
+          class="clear-btn" 
+          @click="clearCaptcha"
+          :title="i18n.t('clear') || 'Clear'"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div v-if="filterWarning" class="captcha-filter-warning">
+        <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>{{ i18n.t('invalidCharactersRemoved') }}</span>
+      </div>
     </div>
     <div class="captcha-wrapper" @click="refreshCaptcha" :title="i18n.t('clickToRefresh')">
       <img v-if="captchaImage" :src="captchaImage" :alt="i18n.t('verificationCode')" class="captcha-image" />
@@ -132,8 +134,16 @@ defineExpose({
 .captcha-container {
   display: flex;
   gap: 12px;
-  align-items: stretch;
+  align-items: flex-start;
   width: 100%;
+}
+
+.captcha-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
 
 .input-wrapper {
@@ -279,20 +289,21 @@ defineExpose({
 }
 
 .captcha-filter-warning {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -32px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--warning-600);
+  gap: 8px;
+  background: #fffbeb;
+  color: #d97706;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #fed7aa;
+  font-size: 14px;
 }
 
 .captcha-filter-warning .warning-icon {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 @media (max-width: 768px) {
