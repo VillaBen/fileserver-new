@@ -15,6 +15,12 @@
         <div class="flag-icon">{{ detectedFlag }}</div>
         <p class="location-text">{{ detectedLocation }}</p>
         <p class="message-text">{{ messageText }}</p>
+        <p class="detection-source">{{ detectionSourceText }}</p>
+      </div>
+      
+      <div class="checkbox-container">
+        <el-checkbox v-model="dontShowAgain" :label="i18n.t('dontShowAgain') || 'Don\\'t show again'">
+        </el-checkbox>
       </div>
       
       <template #footer>
@@ -40,6 +46,8 @@ const i18n = useI18nStore();
 const showDialog = ref(false);
 const detectedCountryCode = ref('');
 const detectedCountryName = ref('');
+const dontShowAgain = ref(false);
+const detectionSource = ref('');
 
 const chineseRegions = [
   { code: 'CN', name: 'China', flag: '🇨🇳', locale: 'zh-CN' },
@@ -71,22 +79,45 @@ const messageText = computed(() => {
     `We detected you are in ${detectedLocation.value}. Would you like to switch to Chinese?`;
 });
 
+const detectionSourceText = computed(() => {
+  if (detectionSource.value === 'ip') {
+    return '(Based on IP location)';
+  } else if (detectionSource.value === 'browser') {
+    return '(Based on browser language)';
+  }
+  return '';
+});
+
 async function detectLocation() {
   const storedLocale = localStorage.getItem('locale');
-  const hasSeenDialog = localStorage.getItem('regionDialogShown');
+  const neverShowAgain = localStorage.getItem('regionDialogNeverShow');
 
   if (storedLocale && storedLocale !== 'en-US') {
     console.log('[RegionDetector] 已有语言设置:', storedLocale, '跳过检测');
     return;
   }
 
-  if (hasSeenDialog === 'true') {
-    console.log('[RegionDetector] 已显示过对话框，跳过');
+  if (neverShowAgain === 'true') {
+    console.log('[RegionDetector] 用户已勾选不再弹出，跳过');
     return;
   }
 
+  // 方案1：优先使用IP检测
+  let detectedByIP = await detectByIP();
+  
+  if (!detectedByIP) {
+    // 方案2：IP检测失败，使用浏览器语言作为备用方案
+    console.log('[RegionDetector] IP检测失败，使用浏览器语言作为备用方案');
+    detectedByIP = await detectByBrowserLanguage();
+  }
+
+  if (detectedByIP) {
+    checkAndShowDialog();
+  }
+}
+
+async function detectByIP() {
   try {
-    // 纯IP检测模式，使用 AbortController 设置超时
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -102,19 +133,43 @@ async function detectLocation() {
     }
 
     const data = await response.json();
-    console.log('[RegionDetector] IP 检测结果:', data);
+    console.log('[RegionDetector] IP检测结果:', data);
     
     detectedCountryCode.value = data.country_code;
     detectedCountryName.value = data.country_name;
-    checkAndShowDialog();
+    detectionSource.value = 'ip';
+    
+    return true;
   } catch (error) {
-    console.debug('[RegionDetector] 区域检测跳过或失败:', error.message);
+    console.debug('[RegionDetector] IP检测失败:', error.message);
+    return false;
+  }
+}
+
+async function detectByBrowserLanguage() {
+  try {
+    const browserLang = navigator.language || navigator.userLanguage;
+    console.log('[RegionDetector] 浏览器语言:', browserLang);
+    
+    // 检查是否为中文语言
+    if (browserLang.startsWith('zh')) {
+      // 设置为中国区域
+      detectedCountryCode.value = 'CN';
+      detectedCountryName.value = 'China';
+      detectionSource.value = 'browser';
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.debug('[RegionDetector] 浏览器语言检测失败:', error.message);
+    return false;
   }
 }
 
 function checkAndShowDialog() {
   const currentLocale = i18n.currentLocale;
-  console.log('[RegionDetector] 检测到代码:', detectedCountryCode.value, '当前语言:', currentLocale);
+  console.log('[RegionDetector] 检测到代码:', detectedCountryCode.value, '当前语言:', currentLocale, '检测来源:', detectionSource.value);
   
   // 如果检测到中文区域且当前语言是英文，显示提示
   if (detectedRegion.value && currentLocale === 'en-US') {
@@ -129,12 +184,26 @@ function changeLanguage() {
     localStorage.setItem('locale', detectedRegion.value.locale);
   }
   showDialog.value = false;
-  localStorage.setItem('regionDialogShown', 'true');
+  
+  // 只有勾选了不再弹出才保存
+  if (dontShowAgain.value) {
+    localStorage.setItem('regionDialogNeverShow', 'true');
+    console.log('[RegionDetector] 用户勾选不再弹出，已记录');
+  }
+  
+  dontShowAgain.value = false;
 }
 
 function skipLanguageChange() {
   showDialog.value = false;
-  localStorage.setItem('regionDialogShown', 'true');
+  
+  // 只有勾选了不再弹出才保存
+  if (dontShowAgain.value) {
+    localStorage.setItem('regionDialogNeverShow', 'true');
+    console.log('[RegionDetector] 用户勾选不再弹出，已记录');
+  }
+  
+  dontShowAgain.value = false;
 }
 
 onMounted(() => {
@@ -180,12 +249,30 @@ onMounted(() => {
   color: var(--el-text-color-primary);
 }
 
-.message-text {
+<.message-text {
   margin: 0;
   font-size: 14px;
   color: var(--el-text-color-secondary);
   text-align: center;
   line-height: 1.6;
+}
+
+.detection-source {
+  margin: 0;
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
+  text-align: center;
+}
+
+.checkbox-container {
+  padding: 0 16px 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.checkbox-container .el-checkbox {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
 }
 
 .dialog-footer {
