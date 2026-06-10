@@ -120,6 +120,7 @@ async function initDatabase() {
       account_id BIGINT NOT NULL UNIQUE,
       storage_quota BIGINT NOT NULL DEFAULT 10737418240,
       language VARCHAR(20) NOT NULL DEFAULT 'zh-CN',
+      display_name VARCHAR(100),
       avatar TEXT,
       security_question TEXT,
       security_answer_hash TEXT,
@@ -268,6 +269,59 @@ async function initDatabase() {
   `);
 
   console.log('✅ MySQL 数据库初始化完成');
+
+  // 创建初始管理员账号
+  await createInitialAdmin();
+}
+
+/**
+ * 创建初始管理员账号
+ * 如果环境变量中配置了 INITIAL_ADMIN_USERNAME 和 INITIAL_ADMIN_PASSWORD，
+ * 则创建一个管理员账号
+ */
+async function createInitialAdmin() {
+  const adminUsername = process.env.INITIAL_ADMIN_USERNAME || 'admin';
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD;
+
+  if (!adminPassword) {
+    console.log('⚠️  未配置初始管理员密码 (INITIAL_ADMIN_PASSWORD)，跳过创建初始管理员账号');
+    return;
+  }
+
+  // 检查是否已存在账号
+  const existingAccounts = await db.asyncAll('SELECT id FROM accounts LIMIT 1');
+  if (existingAccounts.length > 0) {
+    console.log('ℹ️  数据库中已有账号，跳过创建初始管理员账号');
+    return;
+  }
+
+  try {
+    const { hashPassword } = require('../utils/encryption');
+    const bcrypt = require('bcryptjs');
+    const passwordHash = await bcrypt.hash(adminPassword, 12);
+
+    // 创建管理员账号
+    const result = await db.asyncRun(
+      `INSERT INTO accounts (username, password_hash, role, status, storage_quota) 
+       VALUES (?, ?, 'admin', 1, ?)`,
+      [adminUsername, passwordHash, 10737418240]
+    );
+
+    const accountId = result.lastInsertId;
+
+    // 创建用户配置
+    await db.asyncRun(
+      `INSERT INTO user_profiles (account_id, storage_quota, language, display_name) 
+       VALUES (?, ?, ?, ?)`,
+      [accountId, 10737418240, 'zh-CN', '管理员']
+    );
+
+    console.log(`✅ 初始管理员账号创建成功: ${adminUsername}`);
+    console.log(`   角色: admin`);
+    console.log(`   存储配额: 10 GB`);
+  } catch (error) {
+    console.error('❌ 创建初始管理员账号失败:', error.message);
+  }
 }
 
 module.exports = {
