@@ -27,10 +27,12 @@ const translations = {
       medium: 'Medium',
       strong: 'Strong',
       veryStrong: 'Very Strong',
+      excellent: 'Excellent',
       length: 'At least 8 characters',
       uppercase: 'Contains uppercase and lowercase letters',
       number: 'Contains numbers',
-      special: 'Contains special characters'
+      special: 'Contains special characters',
+      noWeak: 'No common patterns'
     },
     passwordsMatch: 'Passwords match',
     passwordsDontMatch: 'Passwords don\'t match',
@@ -702,10 +704,12 @@ const translations = {
       medium: '中等',
       strong: '强',
       veryStrong: '非常强',
+      excellent: '极佳',
       length: '至少8个字符',
       uppercase: '包含大小写字母',
       number: '包含数字',
-      special: '包含特殊字符'
+      special: '包含特殊字符',
+      noWeak: '不使用常见弱密码'
     },
     passwordsMatch: '密码匹配',
     passwordsDontMatch: '密码不匹配',

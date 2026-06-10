@@ -103,6 +103,9 @@
               <div v-else-if="usernameCheckStatus === 'taken'" class="validation-message error">
                 <el-icon><CircleClose /></el-icon> {{ i18n.t('usernameTaken') }}
               </div>
+              <div v-else-if="usernameCheckStatus === 'invalid'" class="validation-message error">
+                <el-icon><CircleClose /></el-icon> {{ usernameValidationMessage }}
+              </div>
               <div v-if="usernameFilterWarning" class="filter-warning">
                 <el-icon class="warning-icon"><Warning /></el-icon>
                 <span>{{ i18n.t('invalidCharactersRemoved') }}</span>
@@ -338,7 +341,8 @@ const agreeTerms = ref(false);
 const errorMessage = ref('');
 
 // Validation status
-const usernameCheckStatus = ref('idle'); // idle, checking, available, taken
+const usernameCheckStatus = ref('idle'); // idle, checking, available, taken, invalid
+const usernameValidationMessage = ref('');
 const emailCheckStatus = ref('idle'); // idle, checking, available, taken, invalid
 const usernameFilterWarning = ref(false);
 const emailFilterWarning = ref(false);
@@ -390,7 +394,12 @@ const checkUsernameAvailability = async () => {
   try {
     const response = await userAPI.checkUsername(username);
     if (response.success) {
-      usernameCheckStatus.value = response.data.available ? 'available' : 'taken';
+      if (!response.data.valid) {
+        usernameCheckStatus.value = 'invalid';
+        usernameValidationMessage.value = response.data.errors?.[0] || '';
+      } else {
+        usernameCheckStatus.value = response.data.available ? 'available' : 'taken';
+      }
     }
   } catch (error) {
     console.error('检查用户名失败:', error);
