@@ -38,7 +38,7 @@ router.get('/', async (req, res) => {
       }
     }
 
-    res.apiSuccess(playlists);
+    res.apiSuccess({ playlists });
   } catch (error) {
     console.error('获取播放列表错误:', error);
     res.apiError('获取失败', 'PLAYLISTS_ERROR');

@@ -661,6 +661,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, getCurrentInstance } from 'vue';
+import { ElMessageBox } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
 import { Upload, FolderAdd, Search, Grid, List, Folder, TrendCharts, Download, Share, UploadFilled, Document, Edit, Delete, ArrowUp, ArrowDown, Sort, CopyDocument, Setting, CircleCheck, Warning, CircleClose, QuestionFilled, Loading, MagicStick, Collection, FolderOpened } from '@element-plus/icons-vue';
 import { useI18nStore } from '@/stores/i18n';
@@ -765,31 +766,30 @@ function openPlaylistPicker(file) {
 }
 
 async function createPlaylistAndAdd(file) {
-  const { proxy } = getCurrentInstance();
-  const result = await proxy.$prompt('新建播放列表名称', '创建播放列表', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    inputValue: '我的播放列表',
-    inputPlaceholder: '请输入播放列表名称'
-  }).catch(() => null);
-
-  if (!result) return;
-  
-  const name = result.value;
-  if (!name.trim()) {
-    toast.warning('请输入播放列表名称');
-    return;
-  }
-
   try {
+    const result = await ElMessageBox.prompt('新建播放列表名称', '创建播放列表', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputValue: '我的播放列表',
+      inputPlaceholder: '请输入播放列表名称'
+    });
+
+    const name = result.value;
+    if (!name || !name.trim()) {
+      toast.warning('请输入播放列表名称');
+      return;
+    }
+
     const res = await playlistsAPI.createPlaylist({ name: name.trim(), description: '' });
     if (res?.success) {
       await playlistsAPI.addItem(res.data.id, { fileId: file.id, fileName: file.name });
       toast.success('已添加到新的播放列表');
       await fetchPlaylists();
     }
-  } catch (e) { 
-    toast.error(e.error || '操作失败'); 
+  } catch (e) {
+    if (e !== 'cancel' && e?.action !== 'cancel') {
+      toast.error(e?.error || e?.message || '操作失败');
+    }
   }
 }
 
@@ -797,9 +797,9 @@ async function addToExistingPlaylist(playlistId) {
   if (!pickerTargetFile.value) return;
   try {
     await playlistsAPI.addItem(playlistId, { fileId: pickerTargetFile.value.id, fileName: pickerTargetFile.value.name });
-    alert('已添加到播放列表');
+    toast.success('已添加到播放列表');
     showPlaylistPicker.value = false;
-  } catch (e) { alert(e.error || '操作失败'); }
+  } catch (e) { toast.error(e.error || '操作失败'); }
 }
 
 function playInIsland(file) {
