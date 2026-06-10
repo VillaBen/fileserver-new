@@ -104,7 +104,7 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = response.data;
         saveToStorage();
         toast.success('登录成功！');
-        return response;
+        return response.data;
       }
       throw response;
     } catch (error) {
@@ -129,7 +129,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       const response = await authAPI.register(requestData);
       if (response.success) {
-        return response;
+        return response.data;
       }
       throw response;
     } catch (error) {
@@ -158,7 +158,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authAPI.verify2FA({ code });
       if (response.success) {
         await fetchUser();
-        return response;
+        return response.data;
       }
       throw response;
     } catch (error) {
@@ -173,7 +173,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authAPI.disable2FA();
       if (response.success) {
         await fetchUser();
-        return response;
+        return response.data;
       }
       throw response;
     } catch (error) {
@@ -235,7 +235,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await authAPI.changePassword({ currentPassword, newPassword });
       if (response.success) {
-        return response;
+        return response.data;
       }
       throw response;
     } catch (error) {

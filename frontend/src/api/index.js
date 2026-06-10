@@ -15,6 +15,10 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    const csrfToken = localStorage.getItem('csrfToken');
+    if (csrfToken) {
+      config.headers['X-CSRF-Token'] = csrfToken;
+    }
     // FormData 请求由浏览器自动设置正确的 Content-Type 和 boundary
     if (!(config.data instanceof FormData) && !config.headers['Content-Type']) {
       config.headers['Content-Type'] = 'application/json';

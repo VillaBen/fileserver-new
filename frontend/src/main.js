@@ -2,6 +2,8 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import router from './router';
 import ElementPlus from 'element-plus';
+import zhCn from 'element-plus/dist/locale/zh-cn.mjs';
+import en from 'element-plus/dist/locale/en.mjs';
 import 'element-plus/dist/index.css';
 import App from './App.vue';
 import { useI18nStore } from './stores/i18n';
@@ -14,11 +16,16 @@ const pinia = createPinia();
 // Use plugins
 app.use(pinia);
 app.use(router);
-app.use(ElementPlus);
 
 // Initialize i18n
 const i18nStore = useI18nStore();
 i18nStore.init();
+
+// Configure ElementPlus with locale
+const currentLocale = i18nStore.currentLocale;
+app.use(ElementPlus, {
+  locale: currentLocale === 'zh-CN' ? zhCn : en,
+});
 
 // Global error handler - Q2
 app.config.errorHandler = (err, vm, info) => {

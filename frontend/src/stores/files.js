@@ -237,14 +237,14 @@ export const useFilesStore = defineStore('files', () => {
 
       if (response.success) {
         // 检查是否有文件被跳过（因验证失败等原因）
-        if (response.conflicts && response.conflicts.length > 0) {
+        if (response.data.conflicts && response.data.conflicts.length > 0) {
           // 文件因验证等原因被跳过
           uploadItem.status = 'failed';
-          uploadItem.errorReason = response.conflicts[0]?.reason || '文件验证失败';
+          uploadItem.errorReason = response.data.conflicts[0]?.reason || '文件验证失败';
           failedUploads.value.push(uploadItem);
 
           // 显示警告提示
-          const conflictInfo = response.conflicts.map(c =>
+          const conflictInfo = response.data.conflicts.map(c =>
             `${c.fileName}: ${c.reason}`
           ).join('；');
           toast.warning(`部分文件上传失败：${conflictInfo}`);
@@ -541,7 +541,7 @@ export const useFilesStore = defineStore('files', () => {
           toast.success(i18n.t('folderCreated') || '文件夹创建成功');
         }
         await loadFiles(currentFolderId.value);
-        return response;
+        return response.data;
       }
       throw response;
     } catch (error) {
