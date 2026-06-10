@@ -1,5 +1,9 @@
 
 SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS playlist_items;
+DROP TABLE IF EXISTS playlists;
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS trusted_devices;
 DROP TABLE IF EXISTS system_settings;
 DROP TABLE IF EXISTS password_resets;
 DROP TABLE IF EXISTS email_codes;
@@ -156,5 +160,64 @@ CREATE TABLE system_settings (
   `key` VARCHAR(255) UNIQUE NOT NULL,
   value TEXT,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE trusted_devices (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  account_id BIGINT NOT NULL,
+  device_name VARCHAR(255),
+  device_type VARCHAR(50),
+  user_agent TEXT,
+  ip_address VARCHAR(255),
+  location VARCHAR(255),
+  token VARCHAR(255) UNIQUE NOT NULL,
+  last_login_at DATETIME,
+  expires_at DATETIME,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+  INDEX idx_account_id (account_id),
+  INDEX idx_token (token)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE notifications (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  account_id BIGINT NOT NULL,
+  type VARCHAR(50) NOT NULL DEFAULT 'info',
+  title VARCHAR(255) NOT NULL,
+  message TEXT,
+  action_url VARCHAR(255),
+  `read` TINYINT NOT NULL DEFAULT 0,
+  read_at DATETIME,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+  INDEX idx_account_id (account_id),
+  INDEX idx_read (`read`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE playlists (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  account_id BIGINT NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  cover_image VARCHAR(255),
+  item_count INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+  INDEX idx_account_id (account_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE playlist_items (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  playlist_id BIGINT NOT NULL,
+  file_id BIGINT NOT NULL,
+  account_id BIGINT NOT NULL,
+  order_index INT NOT NULL DEFAULT 0,
+  added_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
+  FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+  INDEX idx_playlist_id (playlist_id),
+  INDEX idx_file_id (file_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
