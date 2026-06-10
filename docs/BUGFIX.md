@@ -6,6 +6,70 @@
 
 ## 2026-06-10
 
+### P1 - 统一的输入框字符过滤与警告提示（补充）
+
+**问题**：分享页面搜索框、管理员后台用户搜索框、安全设置页面所有输入框缺少字符过滤；过滤警告提示与输入框距离过近影响视觉。
+
+**修复文件**：
+- [inputFilter.js](file:///workspace/frontend/src/utils/inputFilter.js)
+- [Admin/Users.vue](file:///workspace/frontend/src/views/Admin/Users.vue)
+- [SecuritySettings.vue](file:///workspace/frontend/src/views/SecuritySettings.vue)
+- [Login.vue](file:///workspace/frontend/src/views/Login.vue)
+- [Register.vue](file:///workspace/frontend/src/views/Register.vue)
+
+**修复内容**：
+1. **分享页面搜索框**：使用 `filterSearch` 规则，允许中文文字，仅过滤特殊字符和 emoji
+2. **管理员后台用户搜索框**：从自定义的简单过滤（仅过滤控制字符）改为统一的 `filterUsername` 规则（a-zA-Z0-9_-），并添加过滤警告提示
+3. **安全设置页面输入框**：
+   - SMTP 主机：使用 `filterSearch` 过滤，添加警告提示
+   - SMTP 端口：自定义规则（仅允许数字 0-9，限制 5 位），添加警告提示
+   - SMTP 用户：使用 `filterEmail` 过滤，添加警告提示
+   - SMTP 发件人名称：使用 `filterSearch` 过滤，添加警告提示
+   - VirusTotal API Key：过滤控制字符，添加警告提示
+   - 测试邮件收件人：使用 `filterEmail` 过滤，添加警告提示
+4. **过滤警告样式**：所有过滤警告 `.filter-warning` 添加 `margin-top: 8px`，与输入框保持适当视觉距离
+
+---
+
+### P1 - 验证码组件移动端布局与交互优化
+
+**问题**：验证码图片与输入框在移动端纵向堆叠，占用空间过大；hover 时有多余的浮动动画和刷新提示遮罩，用户希望简化。
+
+**修复文件**：
+- [Captcha.vue](file:///workspace/frontend/src/components/Captcha.vue)
+
+**修复内容**：
+1. **移动端布局**：将移动端 `flex-direction: column` 改为 `flex-direction: row`，验证码图片与输入框保持在同一行
+2. **移除 hover 动画**：移除 `transform: translateY(-2px)` 浮动动画
+3. **移除刷新提示遮罩**：移除 hover 时显示的刷新图标遮罩层
+4. **保留核心功能**：点击刷新验证码功能不变，加载状态显示不变
+
+---
+
+### 各输入框过滤规则对照表
+
+| 位置 | 输入框 | 过滤规则 | 允许内容 |
+|------|--------|----------|----------|
+| 登录/注册 | 用户名 | `filterUsername` | a-zA-Z0-9_- |
+| 登录/注册 | 邮箱 | `filterEmail` | 邮箱合法字符 |
+| 登录/注册 | 密码 | 无（不做字符过滤） | 任意字符 |
+| 验证码 | 验证码 | `filterCaptcha` | a-zA-Z0-9 |
+| Dashboard | 文件名/文件夹名 | `filterFolderName` | 除特殊字符外 |
+| Dashboard | 搜索框 | `filterSearch` | 允许中文，过滤 emoji/特殊字符 |
+| 分享页面 | 搜索框 | `filterSearch` | 允许中文，过滤 emoji/特殊字符 |
+| 管理员后台 | 用户搜索 | `filterUsername` | a-zA-Z0-9_- |
+| 安全设置 | SMTP 主机 | `filterSearch` | 允许中文，过滤 emoji/特殊字符 |
+| 安全设置 | SMTP 端口 | 自定义（仅数字） | 0-9，最多 5 位 |
+| 安全设置 | SMTP 用户 | `filterEmail` | 邮箱合法字符 |
+| 安全设置 | SMTP 发件人 | `filterSearch` | 允许中文，过滤 emoji/特殊字符 |
+| 安全设置 | API Key | 自定义（控制字符） | 除控制字符外 |
+| 安全设置 | 测试收件人 | `filterEmail` | 邮箱合法字符 |
+| 个人设置 | 用户名 | `filterUsername` | a-zA-Z0-9_- |
+| 个人设置 | 邮箱 | `filterEmail` | 邮箱合法字符 |
+| 个人设置 | 显示名称 | `filterDisplayName` | 字母、数字、空格、下划线、连字符 |
+
+---
+
 ### P0 - 登录后页面持续加载不跳转
 
 **问题**：登录成功后页面一直显示加载状态，没有跳转到 dashboard。
