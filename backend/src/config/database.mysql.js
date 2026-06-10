@@ -307,7 +307,7 @@ async function createInitialAdmin() {
       [adminUsername, passwordHash, 10737418240]
     );
 
-    const accountId = result.lastInsertId;
+    const accountId = result.lastID;
 
     // 创建用户配置
     await db.asyncRun(
