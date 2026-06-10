@@ -19,7 +19,7 @@
       </div>
       
       <div class="checkbox-container">
-        <el-checkbox v-model="dontShowAgain" :label="i18n.t('dontShowAgain') || 'Don\\'t show again'">
+        <el-checkbox v-model="dontShowAgain" :label="i18n.t('dontShowAgain') || \"Don't show again\"">
         </el-checkbox>
       </div>
       
