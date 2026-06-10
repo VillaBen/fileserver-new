@@ -184,35 +184,37 @@ function decryptFile(inputPath, outputPath) {
 }
 
 /**
- * 解密文件并返回可读流
+ * 解密文件并返回可读流（流式解密，支持大文件）
  * @param {string} inputPath - 加密文件路径
  * @returns {Promise<ReadableStream>} - 解密后的可读流
  */
 function decryptFileToStream(inputPath) {
   return new Promise((resolve, reject) => {
-    fs.readFile(inputPath, (err, data) => {
-      if (err) return reject(err);
+    // 读取文件开头的 IV（16字节）
+    const fd = fs.openSync(inputPath, 'r');
+    const iv = Buffer.alloc(IV_LENGTH);
+    const bytesRead = fs.readSync(fd, iv, 0, IV_LENGTH, 0);
+    if (bytesRead < IV_LENGTH) {
+      fs.closeSync(fd);
+      return reject(new Error('文件损坏：IV 长度不足'));
+    }
+    fs.closeSync(fd);
 
-      const iv = data.slice(0, IV_LENGTH);
-      const encrypted = data.slice(IV_LENGTH);
-      const key = Buffer.from(ENCRYPTION_KEY.slice(0, 32), 'utf-8');
+    const key = Buffer.from(ENCRYPTION_KEY.slice(0, 32), 'utf-8');
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
 
-      const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    // 创建从 IV 之后开始读取的流
+    const readStream = fs.createReadStream(inputPath, { start: IV_LENGTH });
 
-      try {
-        let decrypted = decipher.update(encrypted);
-        decrypted = Buffer.concat([decrypted, decipher.final()]);
+    // 使用 PassThrough 作为返回的可读流
+    const { PassThrough } = require('stream');
+    const outputStream = new PassThrough();
 
-        const { Readable } = require('stream');
-        const stream = new Readable();
-        stream.push(decrypted);
-        stream.push(null);
+    readStream.on('error', reject);
+    decipher.on('error', reject);
 
-        resolve(stream);
-      } catch (e) {
-        reject(e);
-      }
-    });
+    readStream.pipe(decipher).pipe(outputStream);
+    resolve(outputStream);
   });
 }
 
