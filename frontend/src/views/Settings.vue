@@ -1124,7 +1124,16 @@ const handleEmailInput = (value) => {
 }
 
 .validation-message.filter-inline {
-  color: var(--el-color-warning);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fffbeb;
+  color: #d97706;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #fed7aa;
+  font-size: 14px;
+  margin-top: 8px;
 }
 
 .filter-inline .warning-icon {

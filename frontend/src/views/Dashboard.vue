@@ -22,7 +22,8 @@
           <el-icon><Sort /></el-icon>
           {{ i18n.t('move') }}
         </el-button>
-        <el-input
+        <div class="search-wrapper">
+          <el-input
             v-model="searchQuery"
             :placeholder="i18n.t('searchFiles')"
             prefix-icon="Search"
@@ -30,6 +31,17 @@
             class="search-input"
             @input="handleSearchInput"
           />
+          <transition name="fade">
+            <div v-if="searchFilterWarning" class="filter-warning">
+              <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>{{ i18n.t('invalidCharactersRemoved') }}</span>
+            </div>
+          </transition>
+        </div>
         <div class="sort-options">
           <el-select 
             v-model="sortBy" 
@@ -646,6 +658,7 @@ const router = useRouter();
 
 const viewMode = ref('grid');
 const searchQuery = ref('');
+const searchFilterWarning = ref(false);
 const sortBy = ref('name');
 const sortOrder = ref('asc');
 const showUploadDialog = ref(false);
@@ -1757,6 +1770,12 @@ const handleRenameInput = (value) => {
 // 搜索输入处理（使用统一过滤工具）
 const handleSearchInput = (value) => {
   const sanitized = filterSearch(value);
+  if (sanitized !== value) {
+    searchFilterWarning.value = true;
+    setTimeout(() => {
+      searchFilterWarning.value = false;
+    }, 3000);
+  }
   searchQuery.value = sanitized;
 };
 
@@ -1846,7 +1865,6 @@ const copyShareLink = () => {
 
 .search-input {
   flex: 1;
-  max-width: 350px;
 }
 
 .view-toggle {
@@ -2142,21 +2160,30 @@ const copyShareLink = () => {
   }
 }
 
+.search-wrapper {
+  flex: 1;
+  max-width: 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .filter-warning {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px;
-  background: var(--el-color-warning-light-9);
-  border: 1px solid var(--el-color-warning-light-5);
+  padding: 10px 14px;
+  background: #fffbeb;
+  border: 1px solid #fed7aa;
   border-radius: 8px;
-  color: var(--el-color-warning);
+  color: #d97706;
   font-size: 14px;
-  margin-top: 8px;
 }
 
 .filter-warning .warning-icon {
-  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .fade-enter-active,

@@ -214,7 +214,7 @@ defineExpose({
 
 .captcha-wrapper {
   flex-shrink: 0;
-  width: 180px;
+  width: 160px;
   height: 56px;
   background: linear-gradient(135deg, var(--primary-50) 0%, var(--accent-50) 100%);
   border: 1.5px solid var(--gray-200);

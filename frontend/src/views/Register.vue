@@ -103,7 +103,7 @@
               <div v-else-if="usernameCheckStatus === 'taken'" class="validation-message error">
                 <el-icon><CircleClose /></el-icon> {{ i18n.t('usernameTaken') }}
               </div>
-              <div v-if="usernameFilterWarning" class="validation-message filter-inline">
+              <div v-if="usernameFilterWarning" class="filter-warning">
                 <el-icon class="warning-icon"><Warning /></el-icon>
                 <span>{{ i18n.t('invalidCharactersRemoved') }}</span>
               </div>
@@ -139,7 +139,7 @@
               <div v-else-if="emailCheckStatus === 'taken'" class="validation-message error">
                 <el-icon><CircleClose /></el-icon> {{ i18n.t('emailTaken') }}
               </div>
-              <div v-if="emailFilterWarning" class="validation-message filter-inline">
+              <div v-if="emailFilterWarning" class="filter-warning">
                 <el-icon class="warning-icon"><Warning /></el-icon>
                 <span>{{ i18n.t('invalidCharactersRemoved') }}</span>
               </div>

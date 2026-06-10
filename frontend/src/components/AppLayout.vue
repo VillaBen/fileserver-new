@@ -65,14 +65,6 @@
           <h1 class="page-title">{{ pageTitle }}</h1>
         </div>
         <div class="top-bar-right">
-          <el-input
-            v-model="searchQuery"
-            :placeholder="i18n.t('search') || 'Search files...'"
-            prefix-icon="Search"
-            clearable
-            class="search-input"
-            @keyup.enter="handleSearch"
-          />
           <div class="storage-info">
             <div class="storage-bar">
               <div class="storage-used" :style="{ width: storagePercent + '%' }"></div>
@@ -108,7 +100,6 @@ const i18n = useI18nStore();
 
 const user = computed(() => authStore.user);
 const notificationCount = ref(3);
-const searchQuery = ref('');
 
 const storageLoading = ref(false);
 const storageInfo = ref({
@@ -222,14 +213,7 @@ function handleNotificationClick(notification) {
   }
 }
 
-function handleSearch() {
-  if (searchQuery.value.trim()) {
-    router.push({
-      path: '/dashboard',
-      query: { search: searchQuery.value }
-    });
-  }
-}
+
 </script>
 
 <style scoped>
@@ -412,10 +396,6 @@ function handleSearch() {
   display: flex;
   align-items: center;
   gap: 16px;
-}
-
-.search-input {
-  width: 280px;
 }
 
 .storage-info {
