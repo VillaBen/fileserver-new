@@ -295,6 +295,102 @@ function getCachedFilePath(cachePath, cacheKey, expectedSize = -1) {
   return filePath;
 }
 
+/**
+ * 清理过期的缓存文件
+ * @param {string} cachePath - 缓存目录
+ * @param {number} maxAgeHours - 最大保留时间（小时），默认 24 小时
+ */
+function cleanExpiredCache(cachePath, maxAgeHours = 24) {
+  if (!fs.existsSync(cachePath)) return;
+  
+  const maxAgeMs = maxAgeHours * 60 * 60 * 1000;
+  const now = Date.now();
+  
+  try {
+    const files = fs.readdirSync(cachePath);
+    for (const file of files) {
+      const filePath = path.join(cachePath, file);
+      try {
+        const stat = fs.statSync(filePath);
+        if (now - stat.mtime.getTime() > maxAgeMs) {
+          fs.unlinkSync(filePath);
+          console.log(`🗑️  清理过期缓存: ${file}`);
+        }
+      } catch (e) {
+        console.error(`清理缓存文件失败 ${file}:`, e);
+      }
+    }
+  } catch (e) {
+    console.error('清理缓存目录失败:', e);
+  }
+}
+
+/**
+ * LRU 缓存清理 - 保留最近使用的文件
+ * @param {string} cachePath - 缓存目录
+ * @param {number} maxFiles - 最大文件数量限制，默认 50
+ * @param {number} maxTotalSizeMB - 最大总大小（MB），默认 500MB
+ */
+function cleanLRUCache(cachePath, maxFiles = 50, maxTotalSizeMB = 500) {
+  if (!fs.existsSync(cachePath)) return;
+  
+  try {
+    const files = fs.readdirSync(cachePath)
+      .map(file => {
+        const filePath = path.join(cachePath, file);
+        try {
+          const stat = fs.statSync(filePath);
+          return {
+            name: file,
+            path: filePath,
+            mtime: stat.mtime.getTime(),
+            size: stat.size
+          };
+        } catch (e) {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.mtime - a.mtime); // 按修改时间降序
+    
+    // 计算总大小
+    const totalSizeMB = files.reduce((sum, f) => sum + f.size, 0) / (1024 * 1024);
+    
+    // 需要删除的文件（最旧的）
+    const toDelete = [];
+    
+    // 超过文件数量限制
+    if (files.length > maxFiles) {
+      toDelete.push(...files.slice(maxFiles));
+    }
+    
+    // 超过大小限制
+    let currentSize = totalSizeMB;
+    if (currentSize > maxTotalSizeMB) {
+      for (let i = files.length - 1; i >= 0; i--) {
+        if (currentSize <= maxTotalSizeMB) break;
+        const file = files[i];
+        if (!toDelete.find(d => d.name === file.name)) {
+          toDelete.push(file);
+          currentSize -= file.size / (1024 * 1024);
+        }
+      }
+    }
+    
+    // 删除文件
+    for (const file of toDelete) {
+      try {
+        fs.unlinkSync(file.path);
+        console.log(`🗑️  LRU 清理缓存: ${file.name}`);
+      } catch (e) {
+        console.error(`LRU 清理缓存失败 ${file.name}:`, e);
+      }
+    }
+  } catch (e) {
+    console.error('LRU 缓存清理失败:', e);
+  }
+}
+
 module.exports = {
   encrypt,
   decrypt,
@@ -308,5 +404,7 @@ module.exports = {
   decryptFileToStream,
   decryptFileToCache,
   getCachedFilePath,
-  getFileHash
+  getFileHash,
+  cleanExpiredCache,
+  cleanLRUCache
 };

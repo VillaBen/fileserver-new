@@ -6,7 +6,6 @@
 
 const express = require('express');
 const { db } = require('../config/database.adapter');
-const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -15,7 +14,7 @@ const router = express.Router();
 // ==========================
 
 // 获取所有播放列表
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const userId = req.user.id;
     const playlists = await db.asyncAll(
@@ -47,7 +46,7 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 // 获取播放列表详情及其项目
-router.get('/:id', requireAuth, async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const userId = req.user.id;
     const playlistId = req.params.id;
@@ -80,7 +79,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 });
 
 // 创建播放列表
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const userId = req.user.id;
     const { name, description } = req.body;
@@ -102,7 +101,7 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 // 重命名播放列表
-router.put('/:id', requireAuth, async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const userId = req.user.id;
     const playlistId = req.params.id;
@@ -132,7 +131,7 @@ router.put('/:id', requireAuth, async (req, res) => {
 });
 
 // 删除播放列表
-router.delete('/:id', requireAuth, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const userId = req.user.id;
     const playlistId = req.params.id;
@@ -161,7 +160,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
 // ==========================
 
 // 添加文件到播放列表
-router.post('/:id/items', requireAuth, async (req, res) => {
+router.post('/:id/items', async (req, res) => {
   try {
     const userId = req.user.id;
     const playlistId = req.params.id;
@@ -226,7 +225,7 @@ router.post('/:id/items', requireAuth, async (req, res) => {
 });
 
 // 批量添加文件到播放列表
-router.post('/:id/items/batch', requireAuth, async (req, res) => {
+router.post('/:id/items/batch', async (req, res) => {
   try {
     const userId = req.user.id;
     const playlistId = req.params.id;
@@ -289,7 +288,7 @@ router.post('/:id/items/batch', requireAuth, async (req, res) => {
 });
 
 // 从播放列表移除文件
-router.delete('/:id/items/:itemId', requireAuth, async (req, res) => {
+router.delete('/:id/items/:itemId', async (req, res) => {
   try {
     const userId = req.user.id;
     const playlistId = req.params.id;
@@ -327,7 +326,7 @@ router.delete('/:id/items/:itemId', requireAuth, async (req, res) => {
 });
 
 // 调整播放列表项顺序
-router.post('/:id/items/reorder', requireAuth, async (req, res) => {
+router.post('/:id/items/reorder', async (req, res) => {
   try {
     const userId = req.user.id;
     const playlistId = req.params.id;

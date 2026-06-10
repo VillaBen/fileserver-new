@@ -8,7 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { db } = require('../config/database.adapter');
-const { encryptFile, decryptFileToStream, decryptFileToCache, getCachedFilePath, getFileHash } = require('../utils/encryption');
+const { encryptFile, decryptFileToStream, decryptFileToCache, getCachedFilePath, getFileHash, cleanLRUCache } = require('../utils/encryption');
 const { validateFile, maxFileSize } = require('../middleware/fileValidator');
 const { malwareScan, scanPreview } = require('../middleware/malwareScanner');
 const { validateFilename, validateFoldername } = require('../utils/validators');
@@ -1279,6 +1279,15 @@ router.get('/:id/stream', async (req, res) => {
     if (file.is_encrypted && !cachedPath) {
       try {
         cachedPath = await decryptFileToCache(file.filepath, CACHE_DIR, cacheKey);
+        // 解密成功后异步执行 LRU 缓存清理（避免阻塞响应）
+        // 限制：最多 50 个文件，最大 500MB
+        setTimeout(() => {
+          try {
+            cleanLRUCache(CACHE_DIR, 50, 500);
+          } catch (e) {
+            console.error('缓存清理失败:', e);
+          }
+        }, 1000);
       } catch (decryptErr) {
         console.error('解密到缓存失败:', decryptErr);
         return res.apiError('解密失败', 'DECRYPT_ERROR');
