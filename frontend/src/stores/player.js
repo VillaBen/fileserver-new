@@ -22,6 +22,7 @@ export const usePlayerStore = defineStore('player', () => {
   const userPlaylists = ref([]); // 用户的数据库播放列表
 
   const audio = ref(null);
+  let lastProgressUpdate = 0; // 用于节流高频进度更新
 
   const currentTrack = computed(() => {
     if (currentIndex.value >= 0 && currentIndex.value < queue.value.length) {
@@ -55,9 +56,14 @@ export const usePlayerStore = defineStore('player', () => {
 
       audio.value.addEventListener('timeupdate', () => {
         if (audio.value && audio.value.duration) {
-          currentTime.value = audio.value.currentTime;
-          duration.value = audio.value.duration;
-          progress.value = (audio.value.currentTime / audio.value.duration) * 100;
+          // 节流：每 500ms 最多更新一次进度，避免高频触发 Vue 响应式
+          const now = Date.now();
+          if (!lastProgressUpdate || now - lastProgressUpdate >= 500) {
+            lastProgressUpdate = now;
+            currentTime.value = audio.value.currentTime;
+            duration.value = audio.value.duration;
+            progress.value = (audio.value.currentTime / audio.value.duration) * 100;
+          }
         }
       });
 
