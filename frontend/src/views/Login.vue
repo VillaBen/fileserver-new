@@ -90,17 +90,14 @@
                     @input="handleUsernameInput"
                   />
                 </div>
-              </el-form-item>
-              
-              <el-form-item>
                 <transition name="fade">
-                  <div v-if="showFilterWarning" class="filter-warning">
+                  <div v-if="usernameFilterWarning" class="filter-warning">
                     <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <circle cx="12" cy="12" r="10"/>
                       <line x1="12" y1="8" x2="12" y2="12"/>
                       <line x1="12" y1="16" x2="12.01" y2="16"/>
                     </svg>
-                    <span>{{ i18n.t('invalidCharactersRemoved') || 'Invalid characters removed' }}</span>
+                    <span>{{ i18n.t('invalidCharactersRemoved') }}</span>
                   </div>
                 </transition>
               </el-form-item>
@@ -246,7 +243,7 @@ const isLoading = ref(false);
 const twoFactorRequired = ref(false);
 const twoFactorCode = ref('');
 const errorMessage = ref('');
-const showFilterWarning = ref(false);
+const usernameFilterWarning = ref(false);
 
 const formData = reactive({
   username: '',
@@ -333,10 +330,10 @@ async function cancelTwoFactor() {
 }
 
 // 显示过滤警告提示
-const showFilterWarningToast = () => {
-  showFilterWarning.value = true;
+const showUsernameFilterWarning = () => {
+  usernameFilterWarning.value = true;
   setTimeout(() => {
-    showFilterWarning.value = false;
+    usernameFilterWarning.value = false;
   }, 3000);
 };
 
@@ -348,7 +345,7 @@ const sanitizeTwoFactorCode = (value) => {
 
 // 输入处理函数（使用统一过滤工具）
 const handleUsernameInput = (value) => {
-  const sanitized = filterUsername(value, showFilterWarningToast);
+  const sanitized = filterUsername(value, showUsernameFilterWarning);
   formData.username = sanitized;
 };
 

@@ -103,10 +103,7 @@
               <div v-else-if="usernameCheckStatus === 'taken'" class="validation-message error">
                 <el-icon><CircleClose /></el-icon> {{ i18n.t('usernameTaken') }}
               </div>
-            </el-form-item>
-            
-            <el-form-item v-if="showFilterWarning">
-              <div class="filter-warning">
+              <div v-if="usernameFilterWarning" class="validation-message filter-inline">
                 <el-icon class="warning-icon"><Warning /></el-icon>
                 <span>{{ i18n.t('invalidCharactersRemoved') }}</span>
               </div>
@@ -141,6 +138,10 @@
               </div>
               <div v-else-if="emailCheckStatus === 'taken'" class="validation-message error">
                 <el-icon><CircleClose /></el-icon> {{ i18n.t('emailTaken') }}
+              </div>
+              <div v-if="emailFilterWarning" class="validation-message filter-inline">
+                <el-icon class="warning-icon"><Warning /></el-icon>
+                <span>{{ i18n.t('invalidCharactersRemoved') }}</span>
               </div>
               <div v-else-if="emailCheckStatus === 'invalid'" class="validation-message error">
                 <el-icon><CircleClose /></el-icon> {{ i18n.t('invalidEmail') }}
@@ -309,7 +310,8 @@ const errorMessage = ref('');
 // Validation status
 const usernameCheckStatus = ref('idle'); // idle, checking, available, taken
 const emailCheckStatus = ref('idle'); // idle, checking, available, taken, invalid
-const showFilterWarning = ref(false);
+const usernameFilterWarning = ref(false);
+const emailFilterWarning = ref(false);
 
 // Debounce timers
 let usernameCheckTimer = null;
@@ -323,11 +325,18 @@ const formData = reactive({
   captcha: ''
 });
 
-// 显示过滤警告提示
-const showFilterWarningToast = () => {
-  showFilterWarning.value = true;
+// 显示过滤警告提示（每个输入框独立）
+const showUsernameFilterWarning = () => {
+  usernameFilterWarning.value = true;
   setTimeout(() => {
-    showFilterWarning.value = false;
+    usernameFilterWarning.value = false;
+  }, 3000);
+};
+
+const showEmailFilterWarning = () => {
+  emailFilterWarning.value = true;
+  setTimeout(() => {
+    emailFilterWarning.value = false;
   }, 3000);
 };
 
@@ -398,7 +407,7 @@ const debouncedCheckEmail = () => {
 // 输入处理函数（防止内容残留）
 const handleUsernameInput = (value) => {
   // 直接使用统一的过滤函数，防止部分内容残留
-  const sanitized = filterUsername(value, showFilterWarningToast);
+  const sanitized = filterUsername(value, showUsernameFilterWarning);
   formData.username = sanitized;
   // 实时检查用户名可用性
   debouncedCheckUsername();
@@ -407,7 +416,7 @@ const handleUsernameInput = (value) => {
 // 邮箱输入处理（实时检查）
 const handleEmailInput = (value) => {
   // 直接使用统一的过滤函数，防止部分内容残留
-  const sanitized = filterEmail(value, showFilterWarningToast);
+  const sanitized = filterEmail(value, showEmailFilterWarning);
   formData.email = sanitized;
   // 实时检查邮箱可用性
   debouncedCheckEmail();
@@ -895,6 +904,14 @@ async function handleRegister() {
 
 .validation-message.error {
   color: var(--el-color-danger);
+}
+
+.validation-message.filter-inline {
+  color: var(--el-color-warning);
+}
+
+.validation-message.filter-inline .warning-icon {
+  flex-shrink: 0;
 }
 
 .register-checking-icon {

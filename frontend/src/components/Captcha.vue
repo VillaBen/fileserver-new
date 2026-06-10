@@ -25,6 +25,14 @@
         </svg>
       </button>
     </div>
+    <div v-if="filterWarning" class="captcha-filter-warning">
+      <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span>{{ i18n.t('invalidCharactersRemoved') }}</span>
+    </div>
     <div class="captcha-wrapper" @click="refreshCaptcha" :title="i18n.t('clickToRefresh')">
       <img v-if="captchaImage" :src="captchaImage" :alt="i18n.t('verificationCode')" class="captcha-image" />
       <div v-else class="captcha-loading">
@@ -63,11 +71,16 @@ const props = defineProps({
 const captchaCode = ref('');
 const captchaImage = ref('');
 const captchaId = ref('');
+const filterWarning = ref(false);
 
 function handleInput() {
   const sanitized = filterCaptcha(captchaCode.value);
   if (sanitized !== captchaCode.value) {
     captchaCode.value = sanitized;
+    filterWarning.value = true;
+    setTimeout(() => {
+      filterWarning.value = false;
+    }, 3000);
   }
   emit('update:modelValue', captchaCode.value);
 }
@@ -263,6 +276,23 @@ defineExpose({
   width: 24px;
   height: 24px;
   color: white;
+}
+
+.captcha-filter-warning {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -32px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--warning-600);
+}
+
+.captcha-filter-warning .warning-icon {
+  width: 14px;
+  height: 14px;
 }
 
 @media (max-width: 768px) {
