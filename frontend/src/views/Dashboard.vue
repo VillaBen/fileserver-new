@@ -88,6 +88,9 @@
             </el-button>
           </el-tooltip>
         </div>
+        <div class="header-right">
+          <NotificationCenter />
+        </div>
       </div>
       
       <!-- Stats Cards -->
@@ -444,12 +447,17 @@
           controls
           class="preview-video"
         />
-        <audio 
-          v-else-if="isAudioFile(previewFile)"
-          :src="previewUrl"
-          controls
-          class="preview-audio"
-        />
+        <div v-else-if="isAudioFile(previewFile)" class="audio-preview-box">
+          <audio :src="previewUrl" controls class="preview-audio" />
+          <div class="audio-actions">
+            <el-button type="primary" @click="playInIsland(previewFile)">
+              <el-icon><MagicStick /></el-icon> 在灵动岛中播放
+            </el-button>
+            <el-button @click="openPlaylistPicker(previewFile)">
+              <el-icon><Collection /></el-icon> 添加到播放列表
+            </el-button>
+          </div>
+        </div>
         <div 
           v-else-if="isTextFile(previewFile)"
           class="text-container"
@@ -627,17 +635,38 @@
 
     <!-- File Conflict Dialog -->
     <FileConflictDialog ref="conflictDialog" />
+
+    <DynamicIsland />
+    <el-dialog v-model="showPlaylistPicker" title="添加到播放列表" width="420px">
+      <div v-if="userPlaylists.length === 0" class="picker-empty">暂无播放列表</div>
+      <div v-else class="picker-list">
+        <div
+          v-for="pl in userPlaylists"
+          :key="pl.id"
+          class="picker-item"
+          @click="addToExistingPlaylist(pl.id)"
+        >
+          <el-icon><FolderOpened /></el-icon>
+          <span>{{ pl.name }}</span>
+          <span class="picker-sub">({{ pl.item_count ?? 0 }} 首)</span>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="createPlaylistAndAdd(pickerTargetFile)" type="primary">新建播放列表并添加</el-button>
+        <el-button @click="showPlaylistPicker = false">取消</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Upload, FolderAdd, Search, Grid, List, Folder, TrendCharts, Download, Share, UploadFilled, Document, Edit, Delete, ArrowUp, ArrowDown, Sort, CopyDocument, Setting, CircleCheck, Warning, CircleClose, QuestionFilled, Loading } from '@element-plus/icons-vue';
+import { Upload, FolderAdd, Search, Grid, List, Folder, TrendCharts, Download, Share, UploadFilled, Document, Edit, Delete, ArrowUp, ArrowDown, Sort, CopyDocument, Setting, CircleCheck, Warning, CircleClose, QuestionFilled, Loading, MagicStick, Collection, FolderOpened } from '@element-plus/icons-vue';
 import { useI18nStore } from '@/stores/i18n';
 import { useFilesStore } from '@/stores/files';
 import { useAuthStore } from '@/stores/auth';
-import { filesAPI } from '@/api';
+import { filesAPI, playlistsAPI } from '@/api';
 import { toast } from '@/utils/toast';
 import { formatFileSize, formatDate } from '@/utils/format';
 import { filterSearch, filterFolderName } from '@/utils/inputFilter';
@@ -649,6 +678,9 @@ import Breadcrumb from '@/components/Breadcrumb.vue';
 import MoveDialog from '@/components/MoveDialog.vue';
 import FileConflictDialog from '@/components/FileConflictDialog.vue';
 import UploadProgress from '@/components/UploadProgress.vue';
+import DynamicIsland from '@/components/DynamicIsland.vue';
+import NotificationCenter from '@/components/NotificationCenter.vue';
+import { usePlayerStore } from '@/stores/player';
 
 const i18n = useI18nStore();
 const filesStore = useFilesStore();
@@ -713,6 +745,61 @@ const previewUrl = ref(null);
 const textContent = ref('');
 const textContainerRef = ref(null);
 const shareLoading = ref(false);
+
+const playerStore = usePlayerStore();
+const showPlaylistPicker = ref(false);
+const userPlaylists = ref([]);
+const pickerTargetFile = ref(null);
+
+async function fetchPlaylists() {
+  try {
+    const res = await playlistsAPI.getPlaylists();
+    if (res?.success) userPlaylists.value = res.data?.playlists || [];
+  } catch (e) { console.error(e); }
+}
+
+function openPlaylistPicker(file) {
+  pickerTargetFile.value = file;
+  fetchPlaylists();
+  showPlaylistPicker.value = true;
+}
+
+async function createPlaylistAndAdd(file) {
+  const name = prompt('新建播放列表名称', '我的播放列表');
+  if (!name) return;
+  try {
+    const res = await playlistsAPI.createPlaylist({ name, description: '' });
+    if (res?.success) {
+      await playlistsAPI.addItem(res.data.id, { fileId: file.id, fileName: file.name });
+      alert('已添加到新的播放列表');
+      await fetchPlaylists();
+    }
+  } catch (e) { alert(e.error || '操作失败'); }
+}
+
+async function addToExistingPlaylist(playlistId) {
+  if (!pickerTargetFile.value) return;
+  try {
+    await playlistsAPI.addItem(playlistId, { fileId: pickerTargetFile.value.id, fileName: pickerTargetFile.value.name });
+    alert('已添加到播放列表');
+    showPlaylistPicker.value = false;
+  } catch (e) { alert(e.error || '操作失败'); }
+}
+
+function playInIsland(file) {
+  if (!file) return;
+  filesStore.previewFile(file.id).then(blob => {
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      playerStore.setQueue([{ id: file.id, fileId: file.id, name: file.name, url }], 0);
+      playerStore.isVisible = true;
+      playerStore.isExpanded = true;
+      setTimeout(() => playerStore.play(), 800);
+    }
+  }).catch(e => { console.error(e); alert('预览失败'); });
+}
+
+function playFileInIsland(file) { playInIsland(file); }
 const shareForm = ref({
   expiresAt: null,
   maxDownloads: 10,
@@ -1003,6 +1090,10 @@ const handleFileClick = (file, event) => {
     filesStore.toggleSelectItem(file.id);
   } else {
     filesStore.toggleSelectItem(file.id);
+  }
+  if (isAudioFile(file)) {
+    toast.info('已加入播放队列');
+    playInIsland(file);
   }
 };
 
@@ -2384,5 +2475,75 @@ const copyShareLink = () => {
 
 .error-text {
   color: var(--el-color-danger);
+}
+
+/* 音频预览盒子 */
+.audio-preview-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 30px 20px;
+  width: 100%;
+}
+
+.audio-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* header-right 右侧区域 */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 播放列表选择器 */
+.picker-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--el-text-color-secondary);
+}
+
+.picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.picker-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--el-fill-color-lightest);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.picker-item:hover {
+  background: var(--el-fill-color-light);
+}
+
+.picker-item .el-icon {
+  color: var(--el-color-primary);
+  font-size: 18px;
+}
+
+.picker-item span {
+  font-size: 14px;
+  color: var(--el-text-color-primary);
+}
+
+.picker-sub {
+  color: var(--el-text-color-secondary) !important;
+  font-size: 12px !important;
+  margin-left: auto;
 }
 </style>

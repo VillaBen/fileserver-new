@@ -105,6 +105,8 @@ export const authAPI = {
   disable2FA: () => apiClient.post('/auth/2fa/disable'),
   generateRecoveryCodes: () => apiClient.post('/auth/2fa/recovery-codes'),
   useRecoveryCode: (data) => apiClient.post('/auth/2fa/use-recovery', data),
+  getAuthConfig: () => apiClient.get('/auth/config'),
+  sendEmailVerificationCode: (data) => apiClient.post('/auth/email-verification-code/send', data),
 };
 
 export const captchaAPI = {
@@ -180,6 +182,44 @@ export const adminAPI = {
   deleteUser: (accountId) => apiClient.delete(`/admin/users/${accountId}`),
   getAuditLogs: (params) => apiClient.get('/admin/audit-logs', { params }),
   getAllFiles: (params) => apiClient.get('/admin/files', { params }),
+};
+
+// 用户安全相关 API（安全问题、信任设备、登录日志）
+export const securityAPI = {
+  getSecurityQuestion: () => apiClient.get('/security/security-question'),
+  setSecurityQuestion: (data) => apiClient.post('/security/security-question', data),
+  updateSecurityQuestion: (data) => apiClient.put('/security/security-question', data),
+  deleteSecurityQuestion: (data) => apiClient.delete('/security/security-question', { data }),
+  getTrustedDevices: () => apiClient.get('/security/trusted-devices'),
+  addTrustedDevice: (data) => apiClient.post('/security/trusted-devices', data),
+  deleteTrustedDevice: (id) => apiClient.delete(`/security/trusted-devices/${id}`),
+  clearTrustedDevices: () => apiClient.delete('/security/trusted-devices'),
+  getLoginLogs: (params) => apiClient.get('/security/login-logs', { params }),
+  clearLoginLogs: () => apiClient.delete('/security/login-logs'),
+};
+
+// 通知系统 API
+export const notificationsAPI = {
+  getNotifications: (params) => apiClient.get('/notifications', { params }),
+  markAsRead: (id) => apiClient.put(`/notifications/${id}/read`),
+  markAsUnread: (id) => apiClient.put(`/notifications/${id}/unread`),
+  markAllAsRead: () => apiClient.put('/notifications/read-all'),
+  deleteNotification: (id) => apiClient.delete(`/notifications/${id}`),
+  clearAll: () => apiClient.delete('/notifications'),
+  createNotification: (data) => apiClient.post('/notifications', data),
+};
+
+// 播放列表 API
+export const playlistsAPI = {
+  getPlaylists: () => apiClient.get('/playlists'),
+  getPlaylist: (id) => apiClient.get(`/playlists/${id}`),
+  createPlaylist: (data) => apiClient.post('/playlists', data),
+  updatePlaylist: (id, data) => apiClient.put(`/playlists/${id}`, data),
+  deletePlaylist: (id) => apiClient.delete(`/playlists/${id}`),
+  addItem: (id, data) => apiClient.post(`/playlists/${id}/items`, data),
+  addItemsBatch: (id, data) => apiClient.post(`/playlists/${id}/items/batch`, data),
+  removeItem: (id, itemId) => apiClient.delete(`/playlists/${id}/items/${itemId}`),
+  reorderItems: (id, data) => apiClient.post(`/playlists/${id}/items/reorder`, data),
 };
 
 export const commonAPI = {

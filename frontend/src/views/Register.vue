@@ -207,6 +207,36 @@
                 </span>
               </div>
             </el-form-item>
+
+            <el-form-item v-if="emailEnabled" prop="emailCode">
+              <div class="input-wrapper email-code-wrapper">
+                <span class="input-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="5" width="18" height="14" rx="2"/>
+                    <path d="m3 7 9 6 9-6"/>
+                  </svg>
+                </span>
+                <el-input
+                  v-model="formData.emailCode"
+                  type="text"
+                  placeholder="邮箱验证码（6位数字）"
+                  size="large"
+                  maxlength="6"
+                  clearable
+                />
+                <el-button
+                  class="email-code-btn"
+                  type="primary"
+                  size="large"
+                  @click="sendEmailCode"
+                  :disabled="emailCodeCountdown > 0 || emailSending || !formData.email"
+                  :loading="emailSending"
+                >
+                  <template v-if="emailCodeCountdown > 0">{{ emailCodeCountdown }}s</template>
+                  <template v-else>发送验证码</template>
+                </el-button>
+              </div>
+            </el-form-item>
             
             <el-form-item prop="captcha">
               <Captcha 
@@ -285,13 +315,13 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { Loading, CircleCheck, CircleClose, Warning } from '@element-plus/icons-vue';
 import { useAuthStore } from '../stores/auth';
 import { useI18nStore } from '../stores/i18n';
-import { userAPI } from '../api';
+import { userAPI, authAPI } from '../api';
 import Captcha from '../components/Captcha.vue';
 import PasswordStrength from '../components/PasswordStrength.vue';
 import LanguageSelector from '../components/LanguageSelector.vue';
@@ -317,12 +347,20 @@ const emailFilterWarning = ref(false);
 let usernameCheckTimer = null;
 let emailCheckTimer = null;
 
+// Email verification code
+const emailEnabled = ref(false);
+const emailAuthRequired = ref(false);
+const emailSending = ref(false);
+const emailCodeCountdown = ref(0);
+let emailCodeTimer = null;
+
 const formData = reactive({
   username: '',
   email: '',
   password: '',
   confirmPassword: '',
-  captcha: ''
+  captcha: '',
+  emailCode: ''
 });
 
 // 显示过滤警告提示（每个输入框独立）
@@ -424,6 +462,64 @@ const handleEmailInput = (value) => {
 
 function onPasswordInput() {}
 
+async function loadEmailConfig() {
+  try {
+    const res = await authAPI.getAuthConfig();
+    if (res.success && res.data) {
+      emailEnabled.value = !!res.data.emailEnabled;
+      emailAuthRequired.value = !!res.data.emailAuthRequired;
+    }
+  } catch (error) {
+    console.error('加载邮箱配置失败:', error);
+    emailEnabled.value = false;
+    emailAuthRequired.value = false;
+  }
+}
+
+async function sendEmailCode() {
+  if (!formData.email) {
+    ElMessage.warning('请先输入邮箱地址');
+    return;
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(formData.email)) {
+    ElMessage.warning('请输入有效的邮箱地址');
+    return;
+  }
+
+  if (emailCodeCountdown.value > 0 || emailSending.value) {
+    return;
+  }
+
+  emailSending.value = true;
+  try {
+    const res = await authAPI.sendEmailVerificationCode({ email: formData.email });
+    if (res.success) {
+      ElMessage.success('验证码已发送到你的邮箱，有效期 10 分钟');
+      emailCodeCountdown.value = 60;
+      emailCodeTimer = setInterval(() => {
+        emailCodeCountdown.value--;
+        if (emailCodeCountdown.value <= 0) {
+          clearInterval(emailCodeTimer);
+          emailCodeTimer = null;
+        }
+      }, 1000);
+    } else {
+      ElMessage.error(res.error || '验证码发送失败，请稍后重试');
+    }
+  } catch (error) {
+    console.error('发送邮箱验证码失败:', error);
+    ElMessage.error(error?.error || '验证码发送失败，请稍后重试');
+  } finally {
+    emailSending.value = false;
+  }
+}
+
+onMounted(() => {
+  loadEmailConfig();
+});
+
 async function handleRegister() {
   if (!formData.username || !formData.password) {
     ElMessage.warning(i18n.t('requiredField'));
@@ -481,6 +577,11 @@ async function handleRegister() {
     ElMessage.warning(i18n.t('passwordsDontMatch'));
     return;
   }
+
+  if (emailEnabled.value && !formData.emailCode) {
+    ElMessage.warning('请输入邮箱验证码');
+    return;
+  }
   
   if (!agreeTerms.value) {
     ElMessage.warning(i18n.t('agreeTerms'));
@@ -496,7 +597,8 @@ async function handleRegister() {
       formData.username,
       formData.password,
       formData.email || undefined,
-      captchaData
+      captchaData,
+      formData.emailCode || undefined
     );
     ElMessage.success(i18n.t('registrationSuccess'));
     router.push('/login');
@@ -691,6 +793,26 @@ async function handleRegister() {
 .input-wrapper {
   position: relative;
   width: 100%;
+}
+
+.email-code-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.email-code-wrapper .el-input {
+  flex: 1;
+}
+
+.email-code-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-width: 120px;
+}
+
+.email-code-wrapper :deep(.el-input__wrapper) {
+  padding-left: 52px;
 }
 
 .input-icon {

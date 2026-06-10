@@ -230,6 +230,79 @@ async function initDatabase() {
     )
   `);
 
+  // 信任设备表
+  await db.asyncRun(`
+    CREATE TABLE IF NOT EXISTS trusted_devices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL,
+      device_name TEXT,
+      device_type TEXT,
+      user_agent TEXT,
+      ip_address TEXT,
+      location TEXT,
+      token TEXT UNIQUE NOT NULL,
+      last_login_at DATETIME,
+      expires_at DATETIME,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+    )
+  `);
+
+  // 通知表
+  await db.asyncRun(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL,
+      type TEXT NOT NULL DEFAULT 'info',
+      title TEXT NOT NULL,
+      message TEXT,
+      action_url TEXT,
+      read INTEGER NOT NULL DEFAULT 0,
+      read_at DATETIME,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+    )
+  `);
+
+  // 播放列表表
+  await db.asyncRun(`
+    CREATE TABLE IF NOT EXISTS playlists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      cover_image TEXT,
+      item_count INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+    )
+  `);
+
+  // 播放列表项表
+  await db.asyncRun(`
+    CREATE TABLE IF NOT EXISTS playlist_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      playlist_id INTEGER NOT NULL,
+      file_id INTEGER NOT NULL,
+      account_id INTEGER NOT NULL,
+      order_index INTEGER NOT NULL DEFAULT 0,
+      added_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
+      FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+    )
+  `);
+
+  // 创建新索引
+  await db.asyncRun('CREATE INDEX IF NOT EXISTS idx_trusted_devices_account ON trusted_devices(account_id)');
+  await db.asyncRun('CREATE INDEX IF NOT EXISTS idx_trusted_devices_token ON trusted_devices(token)');
+  await db.asyncRun('CREATE INDEX IF NOT EXISTS idx_notifications_account ON notifications(account_id)');
+  await db.asyncRun('CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read)');
+  await db.asyncRun('CREATE INDEX IF NOT EXISTS idx_playlists_account ON playlists(account_id)');
+  await db.asyncRun('CREATE INDEX IF NOT EXISTS idx_playlist_items_playlist ON playlist_items(playlist_id)');
+  await db.asyncRun('CREATE INDEX IF NOT EXISTS idx_playlist_items_file ON playlist_items(file_id)');
+
   // 创建索引
   await db.asyncRun('CREATE INDEX IF NOT EXISTS idx_accounts_username ON accounts(username)');
   await db.asyncRun('CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email)');

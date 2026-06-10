@@ -6,6 +6,9 @@ const shareRoutes = require('./shares');
 const adminRoutes = require('./admin');
 const captchaRoutes = require('./captcha');
 const apiTokenRoutes = require('./apiTokens');
+const securityRoutes = require('./security');
+const notificationRoutes = require('./notifications');
+const playlistRoutes = require('./playlists');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 function setupRoutes(app) {
@@ -16,6 +19,9 @@ function setupRoutes(app) {
   app.use('/api/admin', requireAuth, requireAdmin, adminRoutes);
   app.use('/api/captcha', captchaRoutes);
   app.use('/api/tokens', requireAuth, apiTokenRoutes);
+  app.use('/api/security', requireAuth, securityRoutes);
+  app.use('/api/notifications', requireAuth, notificationRoutes);
+  app.use('/api/playlists', requireAuth, playlistRoutes);
 }
 
 module.exports = {

@@ -361,6 +361,174 @@
 
       <div class="settings-card">
         <div class="settings-card-header">
+          <div class="settings-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #c4b5fd 100%);">
+            <el-icon :size="24"><Key /></el-icon>
+          </div>
+          <div>
+            <h2 class="settings-card-title">安全问题</h2>
+            <p class="settings-card-desc">设置一个用于找回账户的安全问题与答案</p>
+          </div>
+        </div>
+
+        <div class="settings-card-body">
+          <div v-if="!securityStatus.has_security_question || securityEditing">
+            <el-form :model="securityForm" label-position="top">
+              <el-form-item label="安全问题">
+                <el-select v-model="securityForm.question" placeholder="请选择或自定义一个安全问题" style="width: 100%;">
+                  <el-option
+                    v-for="item in PRESET_QUESTIONS"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+              </el-form-item>
+
+              <el-form-item v-if="securityForm.question === 'custom'" label="自定义问题">
+                <el-input v-model="securityForm.customQuestion" placeholder="请输入自定义的安全问题" />
+              </el-form-item>
+
+              <el-form-item label="答案">
+                <el-input v-model="securityForm.answer" show-password placeholder="请输入安全问题的答案" />
+              </el-form-item>
+
+              <el-form-item label="再次输入答案">
+                <el-input v-model="securityForm.confirmAnswer" show-password placeholder="请再次输入答案以确认" />
+              </el-form-item>
+
+              <el-button type="primary" @click="saveSecurityQuestion" :loading="securityLoading">
+                {{ securityEditing ? '更新安全问题' : '保存安全问题' }}
+              </el-button>
+              <el-button v-if="securityEditing" @click="securityEditing = false">
+                取消
+              </el-button>
+            </el-form>
+          </div>
+
+          <div v-else class="security-question-set">
+            <div class="security-status-row">
+              <span class="security-status-label">当前问题：</span>
+              <span class="security-status-value">{{ securityStatus.question?.slice(0, 3) }}***</span>
+            </div>
+            <div class="security-status-row" style="margin-top: 12px;">
+              <el-tag type="success">已设置</el-tag>
+            </div>
+            <div class="security-actions" style="margin-top: 16px;">
+              <el-button @click="securityEditing = true">修改</el-button>
+              <el-button type="danger" @click="deleteSecurityQuestion">删除</el-button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-icon" style="background: linear-gradient(135deg, #06b6d4 0%, #67e8f9 100%);">
+            <el-icon :size="24"><Monitor /></el-icon>
+          </div>
+          <div>
+            <h2 class="settings-card-title">信任设备</h2>
+            <p class="settings-card-desc">管理已标记为信任的登录设备</p>
+          </div>
+        </div>
+
+        <div class="settings-card-body">
+          <div v-if="trustedDevicesLoading" class="storage-loading">
+            <LoadingSpinner text="加载中..." />
+          </div>
+          <div v-else-if="trustedDevices.length === 0" class="empty-state">
+            <span>暂无信任设备</span>
+          </div>
+          <div v-else>
+            <el-table :data="trustedDevices" style="width: 100%" stripe>
+              <el-table-column label="设备" prop="user_agent" min-width="200">
+                <template #default="scope">
+                  <span class="truncate-text">{{ scope.row.user_agent || '未知设备' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="IP 地址" prop="ip" width="140" />
+              <el-table-column label="位置" prop="location" width="140">
+                <template #default="scope">
+                  <span>{{ scope.row.location || '-' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="信任时间" prop="created_at" width="180">
+                <template #default="scope">
+                  <span>{{ new Date(scope.row.created_at).toLocaleString() }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="120" fixed="right">
+                <template #default="scope">
+                  <el-button size="small" type="danger" link @click="removeTrustedDevice(scope.row.id)">
+                    移除信任
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div style="margin-top: 16px;">
+              <el-button type="danger" @click="clearAllTrustedDevices">
+                清除所有信任设备
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #fcd34d 100%);">
+            <el-icon :size="24"><Histogram /></el-icon>
+          </div>
+          <div>
+            <h2 class="settings-card-title">登录日志</h2>
+            <p class="settings-card-desc">查看最近的账户登录活动</p>
+          </div>
+        </div>
+
+        <div class="settings-card-body">
+          <div v-if="loginLogsLoading" class="storage-loading">
+            <LoadingSpinner text="加载中..." />
+          </div>
+          <div v-else-if="loginLogs.length === 0" class="empty-state">
+            <span>暂无登录记录</span>
+          </div>
+          <div v-else>
+            <el-table :data="loginLogs" style="width: 100%" stripe>
+              <el-table-column label="登录时间" prop="created_at" width="180">
+                <template #default="scope">
+                  <span>{{ new Date(scope.row.created_at || scope.row.timestamp).toLocaleString() }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="IP 地址" prop="ip" width="140" />
+              <el-table-column label="位置" prop="location" width="140">
+                <template #default="scope">
+                  <span>{{ scope.row.location || '-' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="设备 / 浏览器" prop="user_agent" min-width="200">
+                <template #default="scope">
+                  <span class="truncate-text">{{ scope.row.user_agent || '-' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="100">
+                <template #default="scope">
+                  <el-tag :type="scope.row.success ? 'success' : 'danger'">
+                    {{ scope.row.success ? '成功' : '失败' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div style="margin-top: 16px;">
+              <el-button type="danger" @click="clearLoginLogs">
+                清除登录日志
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-card-header">
           <div class="settings-icon" style="background: linear-gradient(135deg, var(--el-color-warning) 0%, var(--el-color-warning-light-3) 100%);">
             <el-icon :size="24"><Sunny /></el-icon>
           </div>
@@ -434,10 +602,10 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import { User, Lock, Sunny, Moon, Monitor, Guide, Upload, Delete, CircleCheck, DocumentCopy, Folder, Loading, CircleClose, Warning } from '@element-plus/icons-vue';
+import { User, Lock, Sunny, Moon, Monitor, Guide, Upload, Delete, CircleCheck, DocumentCopy, Folder, Loading, CircleClose, Warning, Key, Histogram } from '@element-plus/icons-vue';
 import { useI18nStore } from '../stores/i18n';
 import { useAuthStore } from '../stores/auth';
-import { userAPI } from '../api';
+import { userAPI, securityAPI } from '../api';
 import { toast } from '../utils/toast';
 import { formatFileSize } from '../utils/format';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
@@ -541,6 +709,9 @@ onMounted(async () => {
   await loadUserProfile();
   await load2FAStatus();
   await loadStorageInfo();
+  await loadSecurityStatus();
+  await loadTrustedDevices();
+  await loadLoginLogs();
 });
 
 // Language
@@ -1096,6 +1267,121 @@ const handleEmailInput = (value) => {
   // 实时检查邮箱可用性
   debouncedCheckEmail();
 };
+
+// ==================== 安全问题 ====================
+const securityForm = ref({
+  question: 'your_first_school',
+  customQuestion: '',
+  answer: '',
+  confirmAnswer: ''
+});
+const securityStatus = ref({ has_security_question: false, question: '' });
+const securityEditing = ref(false);
+const securityLoading = ref(false);
+const PRESET_QUESTIONS = [
+  { value: 'your_first_school', label: '你的第一所学校叫什么？' },
+  { value: 'birth_city', label: '你出生的城市是？' },
+  { value: 'favorite_book', label: '你最喜欢的书是什么？' },
+  { value: 'mother_maiden_name', label: '你母亲的姓氏（婚前）是什么？' },
+  { value: 'first_pet', label: '你的第一只宠物叫什么？' },
+  { value: 'custom', label: '自定义问题' }
+];
+
+async function loadSecurityStatus() {
+  try {
+    const res = await securityAPI.getSecurityQuestion();
+    if (res?.success) securityStatus.value = res.data || { has_security_question: false };
+  } catch (e) { console.error(e); }
+}
+
+async function saveSecurityQuestion() {
+  if (!securityForm.value.answer) return toast.warning('请填写答案');
+  if (securityForm.value.answer !== securityForm.value.confirmAnswer) return toast.warning('两次输入的答案不一致');
+  const payload = {
+    question: securityForm.value.question === 'custom' ? securityForm.value.customQuestion : securityForm.value.question,
+    answer: securityForm.value.answer,
+    is_custom: securityForm.value.question === 'custom'
+  };
+  securityLoading.value = true;
+  try {
+    const res = securityEditing.value
+      ? await securityAPI.updateSecurityQuestion(payload)
+      : await securityAPI.setSecurityQuestion(payload);
+    if (res?.success) {
+      toast.success('保存成功');
+      securityEditing.value = false;
+      securityForm.value.answer = '';
+      securityForm.value.confirmAnswer = '';
+      await loadSecurityStatus();
+    }
+  } catch (e) { toast.error(e.error || '保存失败'); }
+  finally { securityLoading.value = false; }
+}
+
+async function deleteSecurityQuestion() {
+  if (!confirm('确认删除安全问题吗？删除后需要重新设置。')) return;
+  try {
+    const res = await securityAPI.deleteSecurityQuestion();
+    if (res?.success) {
+      toast.success('已删除安全问题');
+      await loadSecurityStatus();
+    }
+  } catch (e) { toast.error(e.error || '删除失败'); }
+}
+
+// ==================== 信任设备 ====================
+const trustedDevices = ref([]);
+const trustedDevicesLoading = ref(false);
+async function loadTrustedDevices() {
+  trustedDevicesLoading.value = true;
+  try {
+    const res = await securityAPI.getTrustedDevices();
+    if (res?.success) trustedDevices.value = res.data || [];
+  } catch (e) { console.error(e); }
+  finally { trustedDevicesLoading.value = false; }
+}
+async function removeTrustedDevice(id) {
+  if (!confirm('确认移除此设备的信任标记？')) return;
+  try {
+    const res = await securityAPI.deleteTrustedDevice(id);
+    if (res?.success) {
+      toast.success('已移除');
+      await loadTrustedDevices();
+    }
+  } catch (e) { toast.error(e.error || '操作失败'); }
+}
+async function clearAllTrustedDevices() {
+  if (!confirm('确认清除所有信任设备吗？')) return;
+  try {
+    const res = await securityAPI.clearTrustedDevices();
+    if (res?.success) {
+      toast.success('已清除全部信任设备');
+      await loadTrustedDevices();
+    }
+  } catch (e) { toast.error(e.error || '操作失败'); }
+}
+
+// ==================== 登录日志 ====================
+const loginLogs = ref([]);
+const loginLogsLoading = ref(false);
+async function loadLoginLogs() {
+  loginLogsLoading.value = true;
+  try {
+    const res = await securityAPI.getLoginLogs({ limit: 20, offset: 0 });
+    if (res?.success) loginLogs.value = res.data?.logs || res.data || [];
+  } catch (e) { console.error(e); }
+  finally { loginLogsLoading.value = false; }
+}
+async function clearLoginLogs() {
+  if (!confirm('确认清除所有登录日志吗？')) return;
+  try {
+    const res = await securityAPI.clearLoginLogs();
+    if (res?.success) {
+      toast.success('已清除登录日志');
+      await loadLoginLogs();
+    }
+  } catch (e) { toast.error(e.error || '操作失败'); }
+}
 </script>
 
 <style scoped>
@@ -1498,5 +1784,47 @@ const handleEmailInput = (value) => {
     flex-direction: row;
     width: 100%;
   }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--el-text-color-secondary);
+  font-size: 14px;
+}
+
+.truncate-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-all;
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+}
+
+.security-question-set {
+  padding: 8px 0;
+}
+
+.security-status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.security-status-label {
+  color: var(--el-text-color-secondary);
+}
+
+.security-status-value {
+  color: var(--el-text-color-primary);
+  font-weight: 500;
+}
+
+.security-actions {
+  display: flex;
+  gap: 12px;
 }
 </style>

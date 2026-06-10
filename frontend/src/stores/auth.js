@@ -115,7 +115,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(username, password, email, captcha = null) {
+  async function register(username, password, email, captcha = null, emailCode = null) {
     await initIfNeeded();
     isLoading.value = true;
 
@@ -126,6 +126,7 @@ export const useAuthStore = defineStore('auth', () => {
         requestData.captchaId = captcha.captchaId;
         requestData.captchaCode = captcha.captchaCode;
       }
+      if (emailCode) requestData.emailCode = emailCode;
 
       const response = await authAPI.register(requestData);
       if (response.success) {
