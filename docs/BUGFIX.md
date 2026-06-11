@@ -6,6 +6,70 @@
 
 ## 2026-06-10
 
+### P0 - MySQL LIMIT/OFFSET 预处理语句参数类型错误（通知 400）
+
+**问题**：打开通知中心或登录日志时，前端请求返回 400 错误，后端日志报 `ER_WRONG_ARGUMENTS: Incorrect arguments to mysqld_stmt_execute`。
+
+**根本原因**：`mysql2` 的 `pool.execute()` 使用 MySQL 预处理语句（Prepared Statement），`LIMIT ? OFFSET ?` 的占位符参数被当作字符串绑定到 SQL 语句中，但 MySQL 要求这两个位置必须是整数字面量。使用 `?` 占位符 + `params.push(limit, offset)` 传参被 MySQL 拒绝。
+
+**受影响的 API**：
+
+| 端点 | 文件 | 现象 |
+|------|------|------|
+| `GET /api/notifications` | [notifications.js](file:///workspace/backend/src/routes/notifications.js) | 通知中心请求失败 |
+| `GET /api/security/login-logs` | [security.js](file:///workspace/backend/src/routes/security.js) | 登录日志请求失败 |
+
+**修复内容**：
+1. 将 `LIMIT ? OFFSET ?` 占位符改为直接嵌入已验证的数字：`LIMIT ${limit} OFFSET ${offset}`
+2. 数字参数已经过 `parseInt()` 和上限约束（如 `Math.min(limit, 100)`），无 SQL 注入风险
+3. 数据库查询使用 `asyncAll` / `asyncGet` 保持一致
+
+**验证**：通过 curl 模拟登录并请求 `/api/notifications` 和 `/api/security/login-logs`，返回 `success: true`，数据正确。
+
+---
+
+### P1 - 用户名 `filecloud` 被误判为已占用
+
+**问题**：注册页输入用户名 `filecloud` 时提示"用户名被占用"，但数据库中该账号不存在。
+
+**根本原因**：
+1. [validators.js](file:///workspace/backend/src/utils/validators.js) 中 `sensitiveWords = ['admin', 'root', 'system', 'filecloud', 'moderator', 'support']` 将品牌名 `filecloud` 误列入敏感词黑名单
+2. [Register.vue](file:///workspace/frontend/src/views/Register.vue#L382) 的 `checkUsernameAvailability` 只判断 `response.data.available`，未区分"用户名验证不通过"（`valid=false`）和"账号已存在"（`available=false`），一律显示"用户名被占用"
+
+**修复文件**：
+- [validators.js](file:///workspace/backend/src/utils/validators.js)
+- [Register.vue](file:///workspace/frontend/src/views/Register.vue)
+- [i18n.js](file:///workspace/frontend/src/stores/i18n.js)
+
+**修复内容**：
+1. **移除品牌词**：`sensitiveWords` 从 `['admin', 'root', 'system', 'filecloud', 'moderator', 'support']` 改为 `['admin', 'root', 'system', 'moderator', 'support']`
+2. **前端状态分支**：`checkUsernameAvailability` 新增 `invalid` 状态判断：
+   - `response.success && !response.data.valid` → 显示后端返回的具体错误信息（如"用户名包含禁用词汇"）
+   - `response.success && !response.data.available` → 显示"用户名被占用"
+   - `response.success && response.data.available` → 显示"用户名可用"
+3. **状态机变量**：新增 `usernameCheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'`，模板中新增 `invalid` 分支的 `warning-icon + error message` 展示
+
+---
+
+### P2 - i18n 翻译缺失：passwordStrength.noWeak / excellent
+
+**问题**：注册页密码强度区域显示 `passwordStrength.noWeak` 原始字符串（未翻译）。
+
+**根本原因**：[i18n.js](file:///workspace/frontend/src/stores/i18n.js#L25) 的 `passwordStrength` 对象缺少 `noWeak`（"未使用常见弱密码模式"）和 `excellent`（"极佳"）两个翻译键；组件中以 `i18n.t('passwordStrength.noWeak')` 访问时找不到 key，原样返回原始字符串。
+
+**修复文件**：
+- [i18n.js](file:///workspace/frontend/src/stores/i18n.js)
+
+**修复内容**：
+1. **英文语言包**补充：
+   - `passwordStrength.excellent = 'Excellent'`
+   - `passwordStrength.noWeak = 'No common patterns'`
+2. **中文语言包**补充：
+   - `passwordStrength.excellent = '极佳'`
+   - `passwordStrength.noWeak = '不使用常见弱密码'`
+
+---
+
 ### P1 - 统一的输入框字符过滤与警告提示（补充）
 
 **问题**：分享页面搜索框、管理员后台用户搜索框、安全设置页面所有输入框缺少字符过滤；过滤警告提示与输入框距离过近影响视觉。
