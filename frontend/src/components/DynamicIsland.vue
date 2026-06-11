@@ -210,8 +210,7 @@ function handleVolumeInput(e) {
 }
 
 .dynamic-island.expanded .island-compact {
-  padding: 14px 20px;
-  height: auto;
+  display: none;
 }
 
 .island-left {
@@ -508,8 +507,72 @@ function handleVolumeInput(e) {
 
 /* 暗色主题适配 */
 :deep([data-theme='light']) .dynamic-island {
-  background: var(--bg-surface, #2c3e50);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-primary, #1a1a2e);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+:deep([data-theme='light']) .ctrl-btn {
+  color: var(--text-primary, #1a1a2e);
+}
+
+:deep([data-theme='light']) .ctrl-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+:deep([data-theme='light']) .ctrl-btn.play-btn {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+:deep([data-theme='light']) .ctrl-btn.play-btn:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+:deep([data-theme='light']) .play-btn-small {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+:deep([data-theme='light']) .play-btn-small:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+:deep([data-theme='light']) .collapse-btn,
+:deep([data-theme='light']) .close-btn {
+  color: var(--text-primary, #1a1a2e);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+:deep([data-theme='light']) .collapse-btn:hover,
+:deep([data-theme='light']) .close-btn:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+:deep([data-theme='light']) .track-time {
+  color: var(--text-secondary, #666);
+}
+
+:deep([data-theme='light']) .progress-bar {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+:deep([data-theme='light']) .volume-slider {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+:deep([data-theme='light']) .queue-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+:deep([data-theme='light']) .queue-item.active {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+:deep([data-theme='light']) .queue-title {
+  color: var(--text-secondary, #666);
+}
+
+:deep([data-theme='light']) .queue-section {
+  border-top-color: rgba(0, 0, 0, 0.08);
 }
 
 /* 响应式 */
