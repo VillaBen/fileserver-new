@@ -4,6 +4,17 @@
 
 ---
 
+### P2 - 拖动音量条时静音状态未正确同步
+
+**问题**：点击静音后，拖动音量条时静音图标恢复了，但实际声音仍是静音状态。
+
+**根本原因**：[player.js](file:///workspace/frontend/src/stores/player.js#L224) 的 `setVolume` 函数中，当 `val > 0` 时只设置了 `isMuted.value = false`（视觉状态），但没有同步更新 `audio.value.muted`（实际音频元素属性）。
+
+**修复内容**：
+在 `setVolume` 函数的 `val > 0` 分支中，同时设置 `audio.value.muted = false`，确保视觉状态和实际音频元素状态同步。
+
+---
+
 ## 2026-06-11
 
 ### P0 - user_profiles 表缺少 display_name 列（个人资料更新失败）

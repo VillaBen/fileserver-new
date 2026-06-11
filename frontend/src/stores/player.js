@@ -228,6 +228,10 @@ export const usePlayerStore = defineStore('player', () => {
     }
     if (val > 0) {
       isMuted.value = false;
+      // 同步取消音频元素的静音状态
+      if (audio.value) {
+        audio.value.muted = false;
+      }
     }
   }
 
