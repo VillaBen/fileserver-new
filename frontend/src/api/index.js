@@ -151,6 +151,7 @@ export const filesAPI = {
   getFiles: (params) => apiClient.get('/files', { params }),
   getFile: (id) => apiClient.get(`/files/${id}`),
   previewScan: (formData) => apiClient.post('/files/preview-scan', formData),
+  rescanFiles: (fileIds) => apiClient.post('/files/rescan', { fileIds }),
   getSupportedTypes: () => apiClient.get('/files/supported-types'),
   upload: (formData, options = {}) => {
     return apiClient.post('/files/upload', formData, options);

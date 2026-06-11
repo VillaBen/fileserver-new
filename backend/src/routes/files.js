@@ -107,14 +107,14 @@ router.post('/preview-scan', upload.array('files', 10), async (req, res) => {
       const buffer = fs.readFileSync(file.path);
       // 清理临时文件
       fs.unlinkSync(file.path);
-      
+
       const scanResult = await scanPreview({
         originalname: file.originalname,
         buffer: buffer,
         mimetype: file.mimetype,
         size: file.size
       });
-      
+
       results.push(scanResult);
     }
 
@@ -124,6 +124,89 @@ router.post('/preview-scan', upload.array('files', 10), async (req, res) => {
     res.apiError('扫描失败', 'SCAN_ERROR');
   }
 });
+
+// 重新扫描文件并更新状态（使文件列表与实时扫描保持一致）
+router.post('/rescan', async (req, res) => {
+  try {
+    const user = req.user;
+    const { fileIds } = req.body;
+
+    if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
+      return res.apiError('请提供要扫描的文件ID列表', 'VALIDATION_ERROR');
+    }
+
+    const results = [];
+    for (const fileId of fileIds) {
+      // 获取文件信息
+      const file = await db.asyncGet(
+        'SELECT * FROM files WHERE id = ? AND account_id = ? AND type != ?',
+        [fileId, user.id, 'folder']
+      );
+
+      if (!file) {
+        results.push({ fileId, success: false, error: '文件不存在' });
+        continue;
+      }
+
+      try {
+        let buffer;
+        // 读取文件内容
+        if (file.is_encrypted) {
+          buffer = await decrypt(file.filepath);
+        } else {
+          buffer = fs.readFileSync(file.filepath);
+        }
+
+        // 扫描文件
+        const scanResult = await scanPreview({
+          originalname: file.original_name,
+          buffer: buffer,
+          mimetype: file.mime_type,
+          size: file.size
+        });
+
+        // 更新数据库中的状态
+        await db.asyncRun(
+          'UPDATE files SET security_status = ?, scan_mode = ?, scan_result = ?, scan_at = ? WHERE id = ?',
+          [
+            scanResult.securityStatus,
+            scanResult.scanMode,
+            JSON.stringify(scanResult),
+            new Date().toISOString(),
+            fileId
+          ]
+        );
+
+        results.push({
+          fileId,
+          success: true,
+          securityStatus: scanResult.securityStatus,
+          securityStatusText: getSecurityStatusText(scanResult.securityStatus)
+        });
+      } catch (err) {
+        console.error(`扫描文件 ${fileId} 失败:`, err);
+        results.push({ fileId, success: false, error: err.message });
+      }
+    }
+
+    res.apiSuccess(results, '扫描完成');
+  } catch (error) {
+    console.error('重新扫描错误:', error);
+    res.apiError('扫描失败', 'RESCAN_ERROR');
+  }
+});
+
+// 获取安全状态文本
+function getSecurityStatusText(status) {
+  const statusMap = {
+    'safe': '安全',
+    'warning': '警告',
+    'dangerous': '危险',
+    'unknown': '未知',
+    'pending': '扫描中'
+  };
+  return statusMap[status] || '未知';
+}
 
 // 获取文件列表
 router.get('/', async (req, res) => {
