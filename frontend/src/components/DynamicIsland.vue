@@ -182,10 +182,10 @@ function handleVolumeInput(e) {
 
 .dynamic-island {
   pointer-events: auto;
-  background: var(--bg-surface, #1a1a2e);
-  color: #fff;
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-primary, #1a1a2e);
   border-radius: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
   overflow: hidden;
   cursor: pointer;
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
@@ -247,15 +247,15 @@ function handleVolumeInput(e) {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary, #1a1a2e);
   border: none;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .play-btn-small:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .island-expanded {
@@ -305,8 +305,8 @@ function handleVolumeInput(e) {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary, #1a1a2e);
   border: none;
   cursor: pointer;
   display: flex;
@@ -316,7 +316,7 @@ function handleVolumeInput(e) {
 }
 
 .collapse-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.12);
 }
 
 .progress-wrapper {
@@ -325,7 +325,7 @@ function handleVolumeInput(e) {
 
 .progress-bar {
   height: 4px;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.08);
   border-radius: 2px;
   cursor: pointer;
   position: relative;
@@ -352,7 +352,7 @@ function handleVolumeInput(e) {
   height: 38px;
   border-radius: 50%;
   background: transparent;
-  color: #fff;
+  color: var(--text-primary, #1a1a2e);
   border: none;
   cursor: pointer;
   display: flex;
@@ -364,18 +364,18 @@ function handleVolumeInput(e) {
 
 .ctrl-btn:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .ctrl-btn.play-btn {
   width: 52px;
   height: 52px;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.08);
   opacity: 1;
 }
 
 .ctrl-btn.play-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.15);
 }
 
 .volume-wrapper {
@@ -387,7 +387,7 @@ function handleVolumeInput(e) {
   height: 4px;
   -webkit-appearance: none;
   appearance: none;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.08);
   border-radius: 2px;
   outline: none;
 }
@@ -415,7 +415,7 @@ function handleVolumeInput(e) {
   padding: 8px 0 14px 0;
   max-height: 200px;
   overflow-y: auto;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
   margin-top: 4px;
 }
 
@@ -442,11 +442,11 @@ function handleVolumeInput(e) {
 }
 
 .queue-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .queue-item.active {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .queue-item.active .queue-name {
@@ -475,7 +475,7 @@ function handleVolumeInput(e) {
   border-radius: 50%;
   background: transparent;
   border: none;
-  color: #fff;
+  color: var(--text-primary, #1a1a2e);
   opacity: 0.5;
   cursor: pointer;
   display: flex;
@@ -485,15 +485,15 @@ function handleVolumeInput(e) {
 }
 
 .queue-remove:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.1);
   opacity: 1;
 }
 
 .close-btn {
   width: 100%;
   padding: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary, #1a1a2e);
   border: none;
   border-radius: 10px;
   font-size: 13px;
@@ -502,77 +502,86 @@ function handleVolumeInput(e) {
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-}
-
-/* 暗色主题适配 */
-:deep([data-theme='light']) .dynamic-island {
-  background: var(--bg-surface, #ffffff);
-  color: var(--text-primary, #1a1a2e);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-}
-
-:deep([data-theme='light']) .ctrl-btn {
-  color: var(--text-primary, #1a1a2e);
-}
-
-:deep([data-theme='light']) .ctrl-btn:hover {
-  background: rgba(0, 0, 0, 0.08);
-}
-
-:deep([data-theme='light']) .ctrl-btn.play-btn {
-  background: rgba(0, 0, 0, 0.06);
-}
-
-:deep([data-theme='light']) .ctrl-btn.play-btn:hover {
   background: rgba(0, 0, 0, 0.12);
 }
 
-:deep([data-theme='light']) .play-btn-small {
-  background: rgba(0, 0, 0, 0.06);
+/* 深色主题适配（通过 html.dark-theme class 识别） */
+:deep(.dark-theme) .dynamic-island {
+  background: var(--bg-surface, #1a1a2e);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
-:deep([data-theme='light']) .play-btn-small:hover {
-  background: rgba(0, 0, 0, 0.1);
+:deep(.dark-theme) .ctrl-btn {
+  color: #fff;
 }
 
-:deep([data-theme='light']) .collapse-btn,
-:deep([data-theme='light']) .close-btn {
-  color: var(--text-primary, #1a1a2e);
-  background: rgba(0, 0, 0, 0.06);
+:deep(.dark-theme) .ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
-:deep([data-theme='light']) .collapse-btn:hover,
-:deep([data-theme='light']) .close-btn:hover {
-  background: rgba(0, 0, 0, 0.12);
+:deep(.dark-theme) .ctrl-btn.play-btn {
+  background: rgba(255, 255, 255, 0.15);
 }
 
-:deep([data-theme='light']) .track-time {
-  color: var(--text-secondary, #666);
+:deep(.dark-theme) .ctrl-btn.play-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
-:deep([data-theme='light']) .progress-bar {
-  background: rgba(0, 0, 0, 0.08);
+:deep(.dark-theme) .play-btn-small {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
 }
 
-:deep([data-theme='light']) .volume-slider {
-  background: rgba(0, 0, 0, 0.08);
+:deep(.dark-theme) .play-btn-small:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 
-:deep([data-theme='light']) .queue-item:hover {
-  background: rgba(0, 0, 0, 0.05);
+:deep(.dark-theme) .collapse-btn,
+:deep(.dark-theme) .close-btn {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
 }
 
-:deep([data-theme='light']) .queue-item.active {
-  background: rgba(0, 0, 0, 0.08);
+:deep(.dark-theme) .collapse-btn:hover,
+:deep(.dark-theme) .close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
-:deep([data-theme='light']) .queue-title {
-  color: var(--text-secondary, #666);
+:deep(.dark-theme) .track-time {
+  color: rgba(255, 255, 255, 0.6);
 }
 
-:deep([data-theme='light']) .queue-section {
-  border-top-color: rgba(0, 0, 0, 0.08);
+:deep(.dark-theme) .progress-bar {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+:deep(.dark-theme) .volume-slider {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+:deep(.dark-theme) .queue-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+:deep(.dark-theme) .queue-item.active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+:deep(.dark-theme) .queue-title {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+:deep(.dark-theme) .queue-section {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+:deep(.dark-theme) .queue-remove {
+  color: #fff;
+}
+
+:deep(.dark-theme) .queue-remove:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* 响应式 */
