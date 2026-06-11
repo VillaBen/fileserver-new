@@ -4,6 +4,40 @@
 
 ---
 
+## 2026-06-11 (下午)
+
+### P0 - 数据库初始化脚本缺少 display_name 列（导致个人资料更新失败）
+
+**问题**：全新初始化数据库后，用户更新个人资料的显示名、用户名、邮箱时报错失败。
+
+**根本原因**：多个数据库初始化文件中 `user_profiles` 表的定义缺少 `display_name` 列：
+- `backend/src/config/database.js` (SQLite) - **缺失**
+- `backend/setup.sql` (MySQL 初始化脚本) - **缺失**
+- `backend/setup.sqlite.sql` (SQLite 初始化脚本) - **缺失**
+
+此外，`database.mysql.js` 中 `playlist_items` 和 `playlists` 表的列名与实际使用代码不一致：
+
+| 表 | 问题 |
+|-----|------|
+| `playlists` | 缺少 `cover_image` 列 |
+| `playlist_items` | 使用了错误的列名（`file_name`, `sort_order` 而非 `file_id`, `order_index`, `added_at`, `account_id`）|
+
+**修复文件**：
+- [database.js](file:///workspace/backend/src/config/database.js) - 增加 `display_name TEXT`
+- [database.mysql.js](file:///workspace/backend/src/config/database.mysql.js) - 修正 `playlists` 和 `playlist_items` 列定义
+- [setup.sql](file:///workspace/backend/setup.sql) - 增加 `display_name VARCHAR(100)`
+- [setup.sqlite.sql](file:///workspace/backend/setup.sqlite.sql) - 增加 `display_name TEXT`
+
+**验证结果**：
+- ✅ 全新初始化后 14 张表全部正确创建
+- ✅ 用户注册成功
+- ✅ 个人资料获取成功（`displayName` 默认回退为 username）
+- ✅ 个人资料更新成功（用户名、显示名、语言三项均更新成功）
+- ✅ 数据库直查确认 `display_name='我的测试名字'`
+- ✅ 播放列表创建/获取功能正常
+
+---
+
 ### P4 - 播放列表与灵动岛未联动
 
 **问题**：在预览页面点击"添加到播放列表"后，音频仅添加到数据库，没有同时添加到灵动岛播放队列。
