@@ -4,6 +4,29 @@
 
 ---
 
+### P4 - 播放列表与灵动岛未联动
+
+**问题**：在预览页面点击"添加到播放列表"后，音频仅添加到数据库，没有同时添加到灵动岛播放队列。
+
+**修复内容**：
+修改 [Dashboard.vue](file:///workspace/frontend/src/views/Dashboard.vue#L796) 的 `addToExistingPlaylist` 函数：
+- 添加成功后，同时将音频添加到灵动岛播放队列
+- 如果当前有播放，使用 `addToQueue` 添加到队列
+- 如果当前没有播放，使用 `setQueue` 开始新播放
+
+---
+
+### P3 - 播放列表选择器缺少删除按钮
+
+**问题**：播放列表选择器中没有删除播放列表的按钮。
+
+**修复内容**：
+1. 在 [Dashboard.vue](file:///workspace/frontend/src/views/Dashboard.vue#L818) 添加 `deletePlaylistItem` 函数
+2. 修改播放列表选择器模板，为每个播放列表项添加删除按钮
+3. 使用 `@click.stop` 防止点击删除按钮时触发添加操作
+
+---
+
 ### P2 - 拖动音量条时静音状态未正确同步
 
 **问题**：点击静音后，拖动音量条时静音图标恢复了，但实际声音仍是静音状态。

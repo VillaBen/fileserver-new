@@ -644,11 +644,19 @@
           v-for="pl in userPlaylists"
           :key="pl.id"
           class="picker-item"
-          @click="addToExistingPlaylist(pl.id)"
         >
-          <el-icon><FolderOpened /></el-icon>
-          <span>{{ pl.name }}</span>
-          <span class="picker-sub">({{ pl.item_count ?? 0 }} 首)</span>
+          <div @click="addToExistingPlaylist(pl.id)" class="picker-item-content">
+            <el-icon><FolderOpened /></el-icon>
+            <span>{{ pl.name }}</span>
+            <span class="picker-sub">({{ pl.item_count ?? 0 }} 首)</span>
+          </div>
+          <el-button 
+            icon="Delete" 
+            class="picker-delete-btn"
+            @click.stop="deletePlaylistItem(pl.id)"
+            type="text" 
+            size="small"
+          />
         </div>
       </div>
       <template #footer>
@@ -798,8 +806,45 @@ async function addToExistingPlaylist(playlistId) {
   try {
     await playlistsAPI.addItem(playlistId, { fileId: pickerTargetFile.value.id, fileName: pickerTargetFile.value.name });
     toast.success('已添加到播放列表');
+    
+    // 同时添加到灵动岛播放队列
+    const url = getStreamUrl(pickerTargetFile.value.id);
+    const track = { id: pickerTargetFile.value.id, fileId: pickerTargetFile.value.id, name: pickerTargetFile.value.name, url };
+    
+    if (playerStore.currentIndex >= 0) {
+      playerStore.addToQueue(track);
+    } else {
+      playerStore.setQueue([track], 0);
+      playerStore.expandPlayer();
+      setTimeout(() => playerStore.play(), 500);
+    }
+    
     showPlaylistPicker.value = false;
   } catch (e) { toast.error(e.error || '操作失败'); }
+}
+
+async function deletePlaylistItem(playlistId) {
+  try {
+    const result = await ElMessageBox.confirm(
+      '确定要删除这个播放列表吗？删除后无法恢复。',
+      '删除播放列表',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    );
+    
+    if (result === 'confirm') {
+      await playlistsAPI.deletePlaylist(playlistId);
+      toast.success('播放列表已删除');
+      await fetchPlaylists();
+    }
+  } catch (e) {
+    if (e !== 'cancel' && e?.action !== 'cancel') {
+      toast.error(e?.error || '操作失败');
+    }
+  }
 }
 
 function playInIsland(file) {
