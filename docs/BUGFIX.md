@@ -40,32 +40,84 @@
 
 ---
 
-### P2 - 上传暂停功能错误（暂停时提示失败并重新上传）
+### P1 - 上传暂停/停止功能错误
 
-**问题**：点击暂停按钮后，文件显示"上传失败"，然后自动重新开始上传。
+**问题**：
+1. 点击暂停按钮后，文件显示"上传失败"，然后自动重新开始上传
+2. 点击停止按钮后，文件显示"上传失败"，但实际已停止
 
 **根本原因**：
-1. `pauseUpload` 调用 `controller.abort()` 中止请求
-2. `uploadSingleFile` 的 `catch` 块捕获 `AbortError` 后，**错误地**将文件标记为 `failed`
-3. 文件被添加到 `failedUploads`，但 `pauseUpload` 又把文件移回 `uploadQueue`
-4. `startUploads` 检测到队列中有文件，开始新的上传
+
+| 问题 | 原因 |
+|------|------|
+| 暂停后显示失败 | `uploadSingleFile` 的 `catch` 块将所有 `AbortError` 都当作失败处理 |
+| 暂停后自动重传 | `startUploads` 的 while 循环会立即取出暂停的文件并重新开始上传 |
+| 停止显示失败 | `pauseUpload` 和 `cancelUpload` 都使用 `controller.abort()`，无法区分 |
+
+**关键问题代码**（[files.js](file:///workspace/frontend/src/stores/files.js)）：
+```javascript
+// 原代码 - startUploads 会立即取出所有队列中的文件
+while (activeUploads.value.length < maxConcurrent && uploadQueue.value.length > 0) {
+  const uploadItem = uploadQueue.value.shift();  // ❌ 取出包括暂停的文件
+  uploadItem.status = 'uploading';
+  activeUploads.value.push(uploadItem);
+  uploadSingleFile(uploadItem, folderId, conflictAction);
+}
+```
 
 **修复文件**：
 - [files.js](file:///workspace/frontend/src/stores/files.js)
-- [api/index.js](file:///workspace/frontend/src/api/index.js)
 
 **修复内容**：
-1. 在 `catch` 块中检查状态：如果是 `paused` 状态，不标记为失败
-2. 修改 `pauseUpload`：先标记状态为 `paused`，再中止请求，保留进度
-3. 修改 `resumeUpload`：重置状态为 `pending`，重新开始上传
-4. 修改 `finally` 块：只在非暂停状态下才从 `activeUploads` 移除
-5. 修复 `onUploadProgress`：只在 `uploading` 状态下更新进度
-6. 修复 axios signal 参数传递
+
+1. **修改 `startUploads` 函数**：
+   - 只处理状态为 `pending` 的文件
+   - 跳过状态为 `paused` 的文件
+   ```javascript
+   // 找到第一个状态为 pending 的文件
+   const pendingIndex = uploadQueue.value.findIndex(item => item.status === 'pending');
+   if (pendingIndex === -1) {
+     // 没有待处理的文件，可能都是暂停的
+     break;
+   }
+   const uploadItem = uploadQueue.value.splice(pendingIndex, 1)[0];
+   ```
+
+2. **修改 `uploadSingleFile` 函数**：
+   - 在 catch 块中区分暂停和取消操作
+   - 检查 `uploadItem.status === 'paused'` 来判断是暂停还是取消
+   ```javascript
+   if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
+     if (uploadItem.status === 'paused') {
+       // 暂停：保留文件在队列中，不标记为失败
+     } else {
+       // 取消：标记为失败
+       uploadItem.status = 'failed';
+       uploadItem.errorReason = '已取消';
+     }
+   }
+   ```
+
+3. **修改 `pauseUpload` 函数**：
+   - 先标记状态为 `paused`，再中止请求
+   - 将文件添加到队列前端，保留当前进度
+
+4. **修改 `resumeUpload` 函数**：
+   - 重置状态为 `pending`，重新开始上传
+
+5. **修改 `finally` 块**：
+   - 只在非暂停状态下才从 `activeUploads` 移除
+
+6. **修改 `onUploadProgress` 回调**：
+   - 只在 `uploading` 状态下更新进度，避免暂停后的进度跳动
 
 **修复后行为**：
-- 暂停：文件状态变为 `paused`，保留在队列中，不显示失败
-- 恢复：重新开始上传（断点续传需要后端支持）
-- 取消：文件标记为 `failed`，显示"已取消"
+
+| 操作 | 行为 |
+|------|------|
+| **暂停** | 文件状态变为 `paused`，保留在队列中，不显示失败，等待用户恢复 |
+| **恢复** | 用户点击恢复按钮后，文件状态变为 `pending`，重新开始上传 |
+| **取消** | 文件标记为 `failed`，显示"已取消"，不自动重传 |
 
 ---
 
