@@ -186,9 +186,16 @@ export const useFilesStore = defineStore('files', () => {
     const maxConcurrent = 3; // 最多同时上传 3 个文件
     
     while (uploadQueue.value.length > 0 || activeUploads.value.length > 0) {
-      // 启动新的上传
+      // 启动新的上传（只处理状态为 pending 的文件，跳过 paused 的文件）
       while (activeUploads.value.length < maxConcurrent && uploadQueue.value.length > 0) {
-        const uploadItem = uploadQueue.value.shift();
+        // 找到第一个状态为 pending 的文件
+        const pendingIndex = uploadQueue.value.findIndex(item => item.status === 'pending');
+        if (pendingIndex === -1) {
+          // 没有待处理的文件，可能都是暂停的
+          break;
+        }
+        
+        const uploadItem = uploadQueue.value.splice(pendingIndex, 1)[0];
         uploadItem.status = 'uploading';
         activeUploads.value.push(uploadItem);
         
