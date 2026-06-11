@@ -4,6 +4,41 @@
 
 ---
 
+## 2026-06-11
+
+### P0 - user_profiles 表缺少 display_name 列（个人资料更新失败）
+
+**问题**：个人资料页更新用户名、邮箱、显示名时报错失败。
+
+**根本原因**：
+1. `user_profiles` 表中缺少 `display_name` 列
+2. 后端 `updateProfile` 函数（[UserController.js](file:///workspace/backend/src/controllers/UserController.js)）尝试向 `user_profiles` 表写入 `display_name` 字段，但该列不存在，导致 SQL 错误
+3. 数据库初始化脚本（[database.mysql.js](file:///workspace/backend/src/config/database.mysql.js#L123)）中已定义 `display_name` 列，但现有数据库未正确同步
+
+**修复内容**：
+1. 执行 SQL：`ALTER TABLE user_profiles ADD COLUMN display_name VARCHAR(100) DEFAULT NULL AFTER language;`
+2. 验证：`displayName`、`username`、`email` 三项更新均返回 `success: true`
+
+---
+
+### P1 - 灵动岛播放列表行为错误（每次点击替换队列）
+
+**问题**：每次点击音频文件都单独播放，没有形成播放列表。
+
+**根本原因**：[Dashboard.vue](file:///workspace/frontend/src/views/Dashboard.vue#L805) 中的 `playInIsland` 函数使用 `playerStore.setQueue()` 每次都**替换**整个播放队列，导致新点击的文件替代了之前的内容。
+
+**修复内容**：
+修改 `playInIsland` 函数逻辑：
+- 如果当前有播放中的内容（`currentIndex >= 0`），使用 `addToQueue` 添加到队列
+- 如果当前没有播放，使用 `setQueue` 开始新的播放列表
+
+**修复后行为**：
+- 点击第一个音频 → 开始播放
+- 点击第二个、第三个音频 → 添加到播放队列
+- 用户可在灵动岛展开后的队列列表中看到所有添加的音频
+
+---
+
 ## 2026-06-10
 
 ### P0 - MySQL LIMIT/OFFSET 预处理语句参数类型错误（通知 400）

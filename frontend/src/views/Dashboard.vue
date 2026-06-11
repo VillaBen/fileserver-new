@@ -805,9 +805,18 @@ async function addToExistingPlaylist(playlistId) {
 function playInIsland(file) {
   if (!file) return;
   const url = getStreamUrl(file.id);
-  playerStore.setQueue([{ id: file.id, fileId: file.id, name: file.name, url }], 0);
-  playerStore.expandPlayer();
-  setTimeout(() => playerStore.play(), 500);
+  const track = { id: file.id, fileId: file.id, name: file.name, url };
+  
+  // 如果当前有播放中的内容，添加到队列
+  if (playerStore.currentIndex >= 0) {
+    playerStore.addToQueue(track);
+    playerStore.expandPlayer();
+  } else {
+    // 如果没有播放，开始新的播放列表
+    playerStore.setQueue([track], 0);
+    playerStore.expandPlayer();
+    setTimeout(() => playerStore.play(), 500);
+  }
 }
 
 function playFileInIsland(file) { playInIsland(file); }
