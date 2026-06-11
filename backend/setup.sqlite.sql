@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     account_id INTEGER NOT NULL UNIQUE,
     storage_quota INTEGER NOT NULL DEFAULT 10737418240,
     language TEXT NOT NULL DEFAULT 'zh-CN',
+    display_name TEXT,
     avatar TEXT,
     security_question TEXT,
     security_answer_hash TEXT,

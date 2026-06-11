@@ -313,6 +313,7 @@ async function initDatabase() {
       account_id BIGINT NOT NULL,
       name VARCHAR(255) NOT NULL,
       description TEXT,
+      cover_image VARCHAR(255),
       item_count INT NOT NULL DEFAULT 0,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -326,12 +327,15 @@ async function initDatabase() {
     CREATE TABLE IF NOT EXISTS playlist_items (
       id BIGINT PRIMARY KEY AUTO_INCREMENT,
       playlist_id BIGINT NOT NULL,
-      file_id BIGINT,
-      file_name VARCHAR(255) NOT NULL,
-      sort_order INT NOT NULL DEFAULT 0,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      file_id BIGINT NOT NULL,
+      account_id BIGINT NOT NULL,
+      order_index INT NOT NULL DEFAULT 0,
+      added_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
-      INDEX idx_playlist_id (playlist_id)
+      FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+      INDEX idx_playlist_id (playlist_id),
+      INDEX idx_file_id (file_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 

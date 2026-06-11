@@ -40,6 +40,7 @@ CREATE TABLE user_profiles (
   account_id BIGINT NOT NULL UNIQUE,
   storage_quota BIGINT NOT NULL DEFAULT 10737418240,
   language VARCHAR(20) NOT NULL DEFAULT 'zh-CN',
+  display_name VARCHAR(100),
   avatar TEXT,
   security_question TEXT,
   security_answer_hash TEXT,
