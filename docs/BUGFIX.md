@@ -6,6 +6,69 @@
 
 ## 2026-06-11 (下午)
 
+### P0 - 文件头检测误报问题（MP4/MOV/M4A等文件被误判为危险）
+
+**问题**：上传MP4等文件时被标记为"危险"，但这些文件已通过 VirusTotal 验证为安全。
+
+**根本原因**：
+1. `malwareScanner.js` 的 `suspiciousSignatures` 数组错误地包含了合法媒体文件的签名
+2. 文件头签名验证过于严格，未考虑同一格式的不同变体
+
+**受影响的文件类型**：
+- MP4（不同大小的 ftyp 框：24/28/32/36字节）
+- MOV/QuickTime
+- M4A
+- WAV/AVI/WebP（RIFF容器格式）
+- GIF（不同版本：GIF87a/GIF89a）
+- PDF（不同版本号）
+
+**修复文件**：
+- [malwareScanner.js](file:///workspace/backend/src/middleware/malwareScanner.js)
+- [file-types.js](file:///workspace/backend/src/config/file-types.js)
+
+**修复内容**：
+1. 从 `suspiciousSignatures` 中移除误报的签名（MP4、WebM、MP3、RIFF等）
+2. 为 MP4/MOV/M4A 添加灵活的 ftyp 标识检测（检测文件开头附近是否包含 `66747970`）
+3. 为 RIFF 容器格式（WAV/AVI/WebP）添加格式标识验证
+4. 修复签名验证逻辑，使用前缀匹配支持不同长度的签名
+5. 添加 `/api/files/rescan` 接口用于重新扫描已上传文件，保持文件列表状态与实时扫描一致
+
+**验证结果**：
+- ✅ PNG、JPG、GIF、PDF、WAV、WebP、AVI、MP3、FLAC、OGG 均正确识别为 safe
+- ✅ MP4 文件正确识别为 safe
+- ✅ 用户提供的 MP4 文件（已通过 VirusTotal 验证）可正常上传
+
+---
+
+### P2 - 上传暂停功能错误（暂停时提示失败并重新上传）
+
+**问题**：点击暂停按钮后，文件显示"上传失败"，然后自动重新开始上传。
+
+**根本原因**：
+1. `pauseUpload` 调用 `controller.abort()` 中止请求
+2. `uploadSingleFile` 的 `catch` 块捕获 `AbortError` 后，**错误地**将文件标记为 `failed`
+3. 文件被添加到 `failedUploads`，但 `pauseUpload` 又把文件移回 `uploadQueue`
+4. `startUploads` 检测到队列中有文件，开始新的上传
+
+**修复文件**：
+- [files.js](file:///workspace/frontend/src/stores/files.js)
+- [api/index.js](file:///workspace/frontend/src/api/index.js)
+
+**修复内容**：
+1. 在 `catch` 块中检查状态：如果是 `paused` 状态，不标记为失败
+2. 修改 `pauseUpload`：先标记状态为 `paused`，再中止请求，保留进度
+3. 修改 `resumeUpload`：重置状态为 `pending`，重新开始上传
+4. 修改 `finally` 块：只在非暂停状态下才从 `activeUploads` 移除
+5. 修复 `onUploadProgress`：只在 `uploading` 状态下更新进度
+6. 修复 axios signal 参数传递
+
+**修复后行为**：
+- 暂停：文件状态变为 `paused`，保留在队列中，不显示失败
+- 恢复：重新开始上传（断点续传需要后端支持）
+- 取消：文件标记为 `failed`，显示"已取消"
+
+---
+
 ### P0 - 数据库初始化脚本缺少 display_name 列（导致个人资料更新失败）
 
 **问题**：全新初始化数据库后，用户更新个人资料的显示名、用户名、邮箱时报错失败。
