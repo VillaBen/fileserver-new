@@ -183,17 +183,14 @@ export const useFilesStore = defineStore('files', () => {
 
   // 开始上传
   async function startUploads(folderId = null, conflictAction = 'keepBoth') {
-    const maxConcurrent = 3; // 最多同时上传 3 个文件
+    const maxConcurrent = 3;
     
-    while (uploadQueue.value.length > 0 || activeUploads.value.length > 0) {
-      // 启动新的上传（只处理状态为 pending 的文件，跳过 paused 的文件）
-      while (activeUploads.value.length < maxConcurrent && uploadQueue.value.length > 0) {
-        // 找到第一个状态为 pending 的文件
+    while (true) {
+      // 启动新的上传（只处理状态为 pending 的文件）
+      let startedAny = false;
+      while (activeUploads.value.length < maxConcurrent) {
         const pendingIndex = uploadQueue.value.findIndex(item => item.status === 'pending');
-        if (pendingIndex === -1) {
-          // 没有待处理的文件，可能都是暂停的
-          break;
-        }
+        if (pendingIndex === -1) break;
         
         const uploadItem = uploadQueue.value.splice(pendingIndex, 1)[0];
         uploadItem.status = 'uploading';
@@ -201,9 +198,20 @@ export const useFilesStore = defineStore('files', () => {
         
         // 异步开始上传
         uploadSingleFile(uploadItem, folderId, conflictAction);
+        startedAny = true;
       }
       
-      // 等待一下
+      // 如果：没有活跃上传 且 没有启动任何新上传 → 检查是否退出
+      if (activeUploads.value.length === 0 && !startedAny) {
+        // 检查队列中是否还有 pending 状态的文件
+        const hasPending = uploadQueue.value.some(item => item.status === 'pending');
+        if (!hasPending) {
+          // 只有 paused 文件或空队列 → 安全退出
+          break;
+        }
+      }
+      
+      // 等待一下，让活跃上传有机会完成
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
