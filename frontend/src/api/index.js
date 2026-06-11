@@ -166,6 +166,10 @@ export const filesAPI = {
       },
       ...options,
     };
+    // 确保 signal 正确传递
+    if (options.signal) {
+      config.signal = options.signal;
+    }
     return apiClient.post('/files/upload', formData, config);
   },
   download: (id) => apiClient.get(`/files/${id}/download`, { responseType: 'blob' }),

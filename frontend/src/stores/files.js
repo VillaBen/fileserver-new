@@ -218,6 +218,9 @@ export const useFilesStore = defineStore('files', () => {
     const controller = new AbortController();
     uploadItem.controller = controller;
 
+    // 标记是否被取消（区分暂停和取消）
+    let wasCancelled = false;
+
     try {
       uploadItem.status = 'uploading';
       uploadItem.progress = 0;
@@ -225,8 +228,11 @@ export const useFilesStore = defineStore('files', () => {
       const response = await filesAPI.uploadWithProgress(
         formData,
         (progress) => {
-          // 网络上传阶段占 0-85%，后端处理占 85-100%
-          uploadItem.progress = Math.round(progress * 0.85);
+          // 只有在上传状态下才更新进度
+          if (uploadItem.status === 'uploading') {
+            // 网络上传阶段占 0-85%，后端处理占 85-100%
+            uploadItem.progress = Math.round(progress * 0.85);
+          }
         },
         { signal: controller.signal }
       );
@@ -258,22 +264,34 @@ export const useFilesStore = defineStore('files', () => {
         throw response;
       }
     } catch (error) {
-      if (error.name === 'AbortError') {
-        // 上传被取消
-        uploadItem.status = 'failed';
-        failedUploads.value.push(uploadItem);
+      if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
+        // 检查是取消还是暂停
+        if (uploadItem.status === 'paused') {
+          // 暂停：将文件移回队列，保留当前进度
+          wasCancelled = false;
+          // 进度已经在 pauseUpload 中处理，这里不需要额外操作
+        } else {
+          // 取消：标记为失败
+          wasCancelled = true;
+          uploadItem.status = 'failed';
+          uploadItem.errorReason = '已取消';
+          failedUploads.value.push(uploadItem);
+        }
       } else {
         uploadItem.status = 'failed';
+        uploadItem.errorReason = error.message || '上传失败';
         failedUploads.value.push(uploadItem);
         console.error('Upload failed:', error);
       }
     } finally {
-      // 从 activeUploads 中移除
-      const index = activeUploads.value.findIndex(u => u.id === uploadItem.id);
-      if (index > -1) {
-        activeUploads.value.splice(index, 1);
+      // 从 activeUploads 中移除（仅当不是暂停状态时）
+      if (uploadItem.status !== 'paused') {
+        const index = activeUploads.value.findIndex(u => u.id === uploadItem.id);
+        if (index > -1) {
+          activeUploads.value.splice(index, 1);
+        }
       }
-      
+
       // 检查是否所有上传都完成
       if (uploadQueue.value.length === 0 && activeUploads.value.length === 0) {
         if (failedUploads.value.length > 0 && completedUploads.value.length === 0) {
@@ -295,6 +313,7 @@ export const useFilesStore = defineStore('files', () => {
   function pauseUpload(uploadId) {
     const upload = activeUploads.value.find(u => u.id === uploadId);
     if (upload && upload.controller) {
+      // 先标记为暂停状态，再中止请求
       upload.status = 'paused';
       upload.controller.abort();
       // 移回队列前端
@@ -302,6 +321,7 @@ export const useFilesStore = defineStore('files', () => {
       if (index > -1) {
         activeUploads.value.splice(index, 1);
       }
+      // 保留当前进度，添加到队列前端以便恢复
       uploadQueue.value.unshift(upload);
     }
   }
@@ -310,7 +330,10 @@ export const useFilesStore = defineStore('files', () => {
   function resumeUpload(uploadId) {
     const upload = uploadQueue.value.find(u => u.id === uploadId);
     if (upload && upload.status === 'paused') {
+      // 重置状态为pending，让 startUploads 处理
       upload.status = 'pending';
+      // 进度从0开始重新上传（断点续传需要后端支持）
+      upload.progress = 0;
       upload.controller = null;
     }
   }
@@ -327,7 +350,7 @@ export const useFilesStore = defineStore('files', () => {
       activeUploads.value.splice(activeIndex, 1);
       return;
     }
-    
+
     // 检查在 queue 中
     const queueIndex = uploadQueue.value.findIndex(u => u.id === uploadId);
     if (queueIndex > -1) {
