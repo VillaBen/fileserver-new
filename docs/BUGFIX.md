@@ -4,6 +4,237 @@
 
 ---
 
+## 2026-06-15
+
+### P1 - 上传暂停/恢复导致副本文件问题（竞态条件）
+
+**问题**：上传文件时多次点击暂停/恢复按钮，产生了重复的副本文件（如 `mvmp4264_..._副本.mp4`）。
+
+**根本原因**：[files.js](file:///workspace/frontend/src/stores/files.js) 中 `startUploads` 函数缺少并发控制机制，当用户快速点击暂停/恢复按钮时，会触发多个 `startUploads` 循环并发执行：
+
+1. 用户点击暂停 → 文件状态变为 `paused`，但 `startUploads` 的 while 循环仍在运行
+2. 用户点击恢复 → `resumeUpload` 调用 `startUploads()`，**再次启动一个新的上传循环**
+3. 两个循环并发处理队列中的文件，导致同一个文件被重复上传
+4. 后端在 `keepBoth` 模式下自动重命名为"副本"
+
+**关键问题代码**：
+```javascript
+// 修复前 - startUploads 无并发控制，可被重复调用
+async function startUploads(folderId = null, conflictAction = 'keepBoth') {
+  while (true) {  // ❌ 多个 while 循环可同时运行
+    // ...处理文件
+  }
+}
+
+function resumeUpload(uploadId) {
+  // ...
+  uploadItem.status = 'pending';
+  await startUploads();  // ❌ 再次调用启动新循环
+}
+```
+
+**修复文件**：
+- [files.js](file:///workspace/frontend/src/stores/files.js)
+
+**修复内容**：
+
+1. **新增 `isUploadingLoopActive` 标志**（第 31 行）：
+   ```javascript
+   const isUploadingLoopActive = ref(false); // 防止 startUploads 并发调用的标志
+   ```
+
+2. **修改 `startUploads` 函数**（第 185-228 行）：
+   - 入口处检查标志，如已有上传循环在运行则直接返回
+   - 使用 `try-finally` 结构确保标志正确重置（即使出错也能释放）
+   ```javascript
+   async function startUploads(folderId = null, conflictAction = 'keepBoth') {
+     if (isUploadingLoopActive.value) return;
+     isUploadingLoopActive.value = true;
+     try {
+       // ...原有循环逻辑
+     } finally {
+       isUploadingLoopActive.value = false;
+     }
+   }
+   ```
+
+**修复后行为**：
+
+| 操作 | 修复前 | 修复后 |
+|------|--------|--------|
+| 快速点击暂停/恢复 | 可能启动多个并发上传循环 → 产生副本 | 仅一个循环活动 → 不会重复上传 |
+| 多文件暂停后恢复 | 所有文件被多个循环并发处理 | 单循环按顺序逐个处理 |
+| `resumeUpload` 调用 | 每次调用都启动新循环 | 如已有循环则复用，无则新启动 |
+
+---
+
+### P2 - 文件上传完成后列表不立即刷新
+
+**问题**：单个文件上传完成后，用户无法立即在文件列表中看到该文件，需要等待所有上传完成才刷新，或者手动刷新页面。
+
+**根本原因**：[files.js](file:///workspace/frontend/src/stores/files.js) 中 `uploadSingleFile` 的 `finally` 块只在"所有文件上传完成"时（`uploadQueue.length === 0 && activeUploads.length === 0`）才调用 `loadFiles` 刷新列表，单个文件成功后缺少即时刷新逻辑。
+
+```javascript
+// 修复前 - finally 块中检查全部完成才刷新
+finally {
+  // 检查是否所有上传都完成
+  if (uploadQueue.value.length === 0 && activeUploads.value.length === 0) {
+    await loadFiles(currentFolderId.value);  // ❌ 只有全部完成才刷新
+  }
+}
+```
+
+**修复文件**：
+- [files.js](file:///workspace/frontend/src/stores/files.js)
+
+**修复内容**（第 287-297 行）：
+
+在上传成功分支（`uploadItem.status = 'completed'` 后）添加即时刷新：
+```javascript
+// 完全成功
+uploadItem.status = 'completed';
+uploadItem.progress = 100;
+completedUploads.value.push(uploadItem);
+
+// 单个文件上传成功后立即刷新列表，让用户能及时看到已上传的文件
+await loadFiles(currentFolderId.value);
+```
+
+**修复后行为**：
+
+| 场景 | 修复前 | 修复后 |
+|------|--------|--------|
+| 第一个文件上传完成 | 列表不刷新 | 列表立即刷新，文件显示 |
+| 后续文件上传完成 | 列表不刷新 | 列表立即刷新，文件显示 |
+| 全部文件完成 | 列表刷新（一次） | 列表已在每次完成时刷新 |
+
+---
+
+### P2 - 新增上传/下载记录功能（30天自动清除）
+
+**功能说明**：为用户操作提供可追溯的记录审计，记录所有上传和下载事件，超过 30 天自动清除，记录不可关闭（强制记录）。
+
+**修复文件**：
+- [files.js](file:///workspace/frontend/src/stores/files.js)
+
+**实现内容**（第 33-35 行状态定义 + 第 425-457 行函数实现）：
+
+1. **新增 `transferHistory` 状态**：
+   ```javascript
+   const transferHistory = ref([]); // 记录列表：{id, type, fileName, size, time, status}
+   ```
+
+2. **记录数据结构**：
+   ```javascript
+   {
+     id: 'transfer-{timestamp}-{random}',  // 唯一 ID
+     type: 'upload' | 'download',          // 操作类型
+     fileName: '文件名.mp4',                // 文件名
+     size: 102400,                         // 文件大小（字节）
+     time: '2026-06-15T07:47:21Z',         // 操作时间（ISO 8601）
+     status: 'success' | 'failed'           // 操作结果
+   }
+   ```
+
+3. **核心函数**：
+   - `addTransferRecord(type, fileName, size, status)`：添加一条新记录，插入到列表最前端，自动调用清理函数
+   - `cleanOldTransferHistory()`：使用 30 天阈值过滤记录，将超过时间的记录从列表中移除
+   - `getTransferHistory()`：返回最近的 100 条记录
+
+4. **集成位置**：
+   - 上传成功（第 293-294 行）：`addTransferRecord('upload', uploadItem.name, uploadItem.size, 'success')`
+   - 上传失败（第 321-322 行）：`addTransferRecord('upload', uploadItem.name, uploadItem.size, 'failed')`
+   - 下载成功（[files.js](file:///workspace/frontend/src/stores/files.js#L582-L601)）：在 `downloadFile` 中添加记录
+
+5. **30 天自动清除机制**：
+   ```javascript
+   const TRANSFER_HISTORY_MAX_DAYS = 30; // 记录保留30天，不可关闭
+
+   function cleanOldTransferHistory() {
+     const cutoffDate = new Date();
+     cutoffDate.setDate(cutoffDate.getDate() - TRANSFER_HISTORY_MAX_DAYS);
+     const cutoffTimestamp = cutoffDate.getTime();
+
+     transferHistory.value = transferHistory.value.filter(record => {
+       const recordDate = new Date(record.time);
+       return recordDate.getTime() >= cutoffTimestamp;
+     });
+   }
+   ```
+
+---
+
+### P2 - 灵动岛遮挡 toast 消息问题
+
+**问题**：展开的灵动岛（Dynamic Island）遮挡了用户操作的 toast 消息，例如点击"添加到播放列表"成功后，用户无法看到"添加成功"提示。
+
+**根本原因**：灵动岛的 `z-index: 9999` 远高于 toast 消息的 z-index，导致在视觉层级上遮挡了 toast。此外 toast 的 `offset: 80` 将消息显示在屏幕顶部区域，与灵动岛位置（top: 16px）重叠。
+
+**修复文件**：
+- [DynamicIsland.vue](file:///workspace/frontend/src/components/DynamicIsland.vue#L173-L181)
+- [toast.js](file:///workspace/frontend/src/utils/toast.js)
+
+**修复内容**：
+
+1. **降低灵动岛 z-index**（DynamicIsland.vue 第 179 行）：
+   ```css
+   /* 修复前 */
+   z-index: 9999;  // 覆盖所有元素
+
+   /* 修复后 */
+   z-index: 1000;  // 让 toast（z-index 通常为 2000）显示在上方
+   ```
+
+2. **调整 toast 位置**（toast.js 第 4 行）：
+   ```javascript
+   // 修复前
+   offset: 80  // 距顶部 80px，与灵动岛完全重叠
+
+   // 修复后
+   offset: 20  // 距顶部 20px，位于灵动岛上方边缘
+   ```
+
+3. **添加自定义类**（toast.js 第 6 行）：
+   ```javascript
+   customClass: 'app-toast', // 便于后续统一调整样式
+   ```
+
+**修复后层级关系**：
+- 灵动岛：z-index 1000（展开的音频播放控件）
+- Toast 消息：z-index 2000+（Element Plus 默认，高于灵动岛）
+- 其他组件：z-index 100 以下
+
+**验证**：点击"添加到播放列表"等产生 toast 的操作，消息可以正确显示在灵动岛上方，用户不会错过操作反馈。
+
+---
+
+### P0 - 数据库与上传目录清理流程
+
+**问题**：测试期间产生的测试文件和数据库记录未清理，导致数据库和上传目录中残留大量测试数据，影响后续测试结果的准确性。
+
+**修复内容**：建立标准清理流程，测试开始前执行以下操作：
+
+1. **清空上传目录**：
+   ```bash
+   rm -rf /workspace/backend/uploads/*
+   ```
+
+2. **重置数据库表**：
+   ```sql
+   SET FOREIGN_KEY_CHECKS=0;
+   TRUNCATE TABLE files;
+   TRUNCATE TABLE shares;
+   TRUNCATE TABLE audit_logs;
+   TRUNCATE TABLE notifications;
+   TRUNCATE TABLE playlist_items;
+   TRUNCATE TABLE playlists;
+   SET FOREIGN_KEY_CHECKS=1;
+   ```
+
+**验证**：清理后执行 `mysql> SELECT COUNT(*) FROM files;` 返回 0，上传目录为空，确保测试从干净状态开始。
+
+---
+
 ## 2026-06-11 (下午)
 
 ### P0 - 文件头检测误报问题（MP4/MOV/M4A等文件被误判为危险）
