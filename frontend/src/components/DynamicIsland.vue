@@ -176,7 +176,7 @@ function handleVolumeInput(e) {
   top: 16px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 9999;
+  z-index: 1000;
   pointer-events: none;
 }
 

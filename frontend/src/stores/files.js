@@ -29,6 +29,10 @@ export const useFilesStore = defineStore('files', () => {
   const completedUploads = ref([]); // 已完成的上传
   const failedUploads = ref([]); // 失败的上传
   const isUploadingLoopActive = ref(false); // 防止 startUploads 并发调用的标志
+  
+  // 上传/下载记录（30天自动清除）
+  const transferHistory = ref([]); // 记录列表：{id, type, fileName, size, time, status}
+  
   const isUploading = computed(() => activeUploads.value.length > 0);
   const uploadProgress = computed(() => {
     if (uploadQueue.value.length === 0 && activeUploads.value.length === 0) return 0;
@@ -285,6 +289,12 @@ export const useFilesStore = defineStore('files', () => {
           uploadItem.status = 'completed';
           uploadItem.progress = 100;
           completedUploads.value.push(uploadItem);
+          
+          // 添加上传记录
+          addTransferRecord('upload', uploadItem.name, uploadItem.size, 'success');
+          
+          // 单个文件上传成功后立即刷新列表，让用户能及时看到已上传的文件
+          await loadFiles(currentFolderId.value);
         }
       } else {
         throw response;
@@ -307,6 +317,10 @@ export const useFilesStore = defineStore('files', () => {
         uploadItem.status = 'failed';
         uploadItem.errorReason = error.message || '上传失败';
         failedUploads.value.push(uploadItem);
+        
+        // 添加失败记录
+        addTransferRecord('upload', uploadItem.name, uploadItem.size, 'failed');
+        
         console.error('Upload failed:', error);
       }
     } finally {
@@ -413,6 +427,40 @@ export const useFilesStore = defineStore('files', () => {
     activeUploads.value = [];
     completedUploads.value = [];
     failedUploads.value = [];
+  }
+
+  // 上传/下载记录管理
+  const TRANSFER_HISTORY_MAX_DAYS = 30; // 记录保留30天
+
+  function addTransferRecord(type, fileName, size, status = 'success') {
+    const record = {
+      id: `transfer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type: type, // 'upload' 或 'download'
+      fileName: fileName,
+      size: size,
+      time: new Date().toISOString(),
+      status: status // 'success' 或 'failed'
+    };
+    transferHistory.value.unshift(record);
+    
+    // 清理30天前的记录
+    cleanOldTransferHistory();
+  }
+
+  function cleanOldTransferHistory() {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - TRANSFER_HISTORY_MAX_DAYS);
+    const cutoffTimestamp = cutoffDate.getTime();
+    
+    transferHistory.value = transferHistory.value.filter(record => {
+      const recordDate = new Date(record.time);
+      return recordDate.getTime() >= cutoffTimestamp;
+    });
+  }
+
+  function getTransferHistory() {
+    // 返回前100条记录
+    return transferHistory.value.slice(0, 100);
   }
 
   // 重新上传失败的文件
@@ -533,9 +581,16 @@ export const useFilesStore = defineStore('files', () => {
 
   async function downloadFile(fileId) {
     try {
+      // 获取文件信息用于记录
+      const fileInfo = files.value.find(f => f.id === fileId);
+      
       const response = await filesAPI.download(fileId);
       // 响应拦截器已经为 blob 类型保留了完整响应
       if (response.config?.responseType === 'blob') {
+        // 添加下载记录
+        if (fileInfo) {
+          addTransferRecord('download', fileInfo.name, fileInfo.size, 'success');
+        }
         return response.data;
       }
       return response;
@@ -695,6 +750,9 @@ export const useFilesStore = defineStore('files', () => {
     clearUploads,
     retryUpload,
     retryFailedUploads,
+    // 上传/下载记录
+    transferHistory,
+    getTransferHistory,
     // 基础功能
     loadFiles,
     loadTrash,

@@ -1,8 +1,9 @@
 import { ElMessage } from 'element-plus';
 
 const toastConfig = {
-  offset: 80,
+  offset: 20,
   duration: 3000,
+  customClass: 'app-toast',
 };
 
 function getErrorMessage(error) {
