@@ -66,16 +66,34 @@ if (Test-Path $BackendDir) {
         & npm install
     }
 
-    # 检查 .env 文件
+    # 检查 .env 文件（优先使用 Windows 专用配置）
     if (!(Test-Path ".env")) {
         Write-Host "  - 正在创建 .env 文件..." -ForegroundColor Cyan
-        Copy-Item ".env.example" ".env"
+        if (Test-Path ".env.example.windows") {
+            # 优先复制 Windows 专用配置（适配 TCP 连接，不使用 socket）
+            Copy-Item ".env.example.windows" ".env"
+            Write-Host "  ✅ 已使用 Windows 专用配置 (.env.example.windows)" -ForegroundColor Green
+        } elseif (Test-Path ".env.example") {
+            Copy-Item ".env.example" ".env"
+            Write-Host "  ✅ 已使用默认配置 (.env.example)" -ForegroundColor Green
+        } else {
+            Write-Host "  ⚠️  未找到配置模板，请手动创建 .env 文件" -ForegroundColor Yellow
+        }
     }
 
-    # 初始化数据库
+    # 检查必要目录
+    $RequiredDirs = @("uploads", "cache", "quarantine")
+    foreach ($Dir in $RequiredDirs) {
+        if (!(Test-Path $Dir)) {
+            New-Item -ItemType Directory -Path $Dir | Out-Null
+            Write-Host "  - 创建目录: $Dir" -ForegroundColor Cyan
+        }
+    }
+
+    # 初始化数据库（如果有脚本）
     if (Test-Path "scripts\init-db.js") {
         Write-Host "  - 正在初始化数据库..." -ForegroundColor Cyan
-        & node scripts\init-db.js
+        & node scripts\init-db.js 2>$null
     }
 
     Write-Host "  - 正在启动后端服务器..." -ForegroundColor Cyan

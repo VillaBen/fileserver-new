@@ -59,12 +59,25 @@ if (Test-Path $BackendDir) {
         & npm install
     }
 
-    # 检查 .env 文件
+    # 检查 .env 文件（优先使用 Windows 专用配置）
     if (!(Test-Path ".env")) {
-        Write-Host "  ⚠️  未找到 .env 文件，使用示例配置..." -ForegroundColor Yellow
-        if (Test-Path ".env.example") {
+        Write-Host "  ⚠️  未找到 .env 文件，正在创建..." -ForegroundColor Yellow
+        if (Test-Path ".env.example.windows") {
+            Copy-Item ".env.example.windows" ".env"
+            Write-Host "  ✅ 已使用 Windows 专用配置" -ForegroundColor Green
+        } elseif (Test-Path ".env.example") {
             Copy-Item ".env.example" ".env"
-            Write-Host "  ✅ 已创建 .env 文件" -ForegroundColor Green
+            Write-Host "  ✅ 已使用默认配置" -ForegroundColor Green
+        } else {
+            Write-Host "  ⚠️  未找到配置模板" -ForegroundColor Red
+        }
+    }
+
+    # 检查必要目录
+    $RequiredDirs = @("uploads", "cache", "quarantine")
+    foreach ($Dir in $RequiredDirs) {
+        if (!(Test-Path $Dir)) {
+            New-Item -ItemType Directory -Path $Dir | Out-Null
         }
     }
 
