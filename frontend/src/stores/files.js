@@ -342,14 +342,37 @@ export const useFilesStore = defineStore('files', () => {
   }
 
   // 恢复上传
-  function resumeUpload(uploadId) {
+  async function resumeUpload(uploadId) {
     const upload = uploadQueue.value.find(u => u.id === uploadId);
     if (upload && upload.status === 'paused') {
-      // 重置状态为pending，让 startUploads 处理
+      try {
+        // 先检查后端是否已有此文件（暂停时可能实际上传已经完成）
+        const conflictCheck = await filesAPI.checkConflict({
+          fileName: upload.name,
+          folderId: upload.folderId,
+          action: 'upload'
+        });
+
+        if (conflictCheck.success && conflictCheck.data?.hasConflict) {
+          // 后端已有同名文件，说明暂停前实际上已经上传完成，避免重复上传
+          upload.status = 'completed';
+          upload.progress = 100;
+          const index = uploadQueue.value.findIndex(u => u.id === uploadId);
+          if (index > -1) {
+            uploadQueue.value.splice(index, 1);
+          }
+          completedUploads.value.push(upload);
+          toast.info(i18n.t('fileAlreadyUploaded') || '文件已在后端存在，无需重新上传');
+          return;
+        }
+      } catch (e) {
+        console.warn('检查文件冲突失败，继续上传', e);
+      }
+
       upload.status = 'pending';
-      // 进度从0开始重新上传（断点续传需要后端支持）
       upload.progress = 0;
       upload.controller = null;
+      await startUploads();
     }
   }
 
